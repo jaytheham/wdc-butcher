@@ -256,7 +256,7 @@ struct Box(T, int N)
         @nogc Box expand(bound_t point) pure const nothrow
         {
             import vector = gfm.math.vector;
-            return Box(vector.min(min, point), vector.max(max, point));
+            return Box(vector.minByElem(min, point), vector.maxByElem(max, point));
         }
 
         /// Expands the box to include another box.
@@ -312,7 +312,7 @@ struct Box(T, int N)
             }
             else
             {
-                static assert(false, Format!("no conversion from %s to %s", U.element_t.stringof, element_t.stringof));
+                static assert(false, "no conversion from " ~ U.element_t.stringof ~ " to " ~ element_t.stringof);
             }
             return this;
         }

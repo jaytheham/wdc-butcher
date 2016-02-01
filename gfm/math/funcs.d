@@ -33,6 +33,7 @@ else version( D_InlineAsm_X86_64 )
 
 /// Linear interpolation, akin to GLSL's mix.
 @nogc S lerp(S, T)(S a, S b, T t) pure nothrow
+  if (is(typeof(t * b + (1 - t) * a) : S))
 {
     return t * b + (1 - t) * a;
 }
@@ -472,10 +473,12 @@ private
         {
             float result;
 
-            static if( __VERSION__ >= 2067 )
-                mixin(`asm pure nothrow @nogc { movss XMM0, x; rsqrtss XMM0, XMM0; movss result, XMM0; }`);
-            else
-                mixin(`asm { movss XMM0, x; rsqrtss XMM0, XMM0; movss result, XMM0; }`);
+            asm pure nothrow @nogc 
+            {
+                movss XMM0, x; 
+                rsqrtss XMM0, XMM0; 
+                movss result, XMM0; 
+            }
             return result;
         }
         else

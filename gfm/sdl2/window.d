@@ -4,10 +4,7 @@ import std.string;
 
 import derelict.sdl2.sdl;
 
-static if( __VERSION__ >= 2067 )
-    import std.experimental.logger;
-else
-    import std.historical.logger;
+import std.experimental.logger;
 
 import gfm.sdl2.sdl,
        gfm.sdl2.surface,
@@ -86,7 +83,6 @@ final class SDL2Window
                 _window = null;
             }
         }
-        deprecated("Use .destroy instead") void close(){}
 
         /// See_also: $(LINK http://wiki.libsdl.org/SDL_SetWindowFullscreen)
         /// Throws: $(D SDL2Exception) on error.

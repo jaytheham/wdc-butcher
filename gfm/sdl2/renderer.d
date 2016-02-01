@@ -4,10 +4,7 @@ import std.string;
 
 import derelict.sdl2.sdl;
 
-static if( __VERSION__ >= 2067 )
-    import std.experimental.logger;
-else
-    import std.historical.logger;
+import std.experimental.logger;
 
 import gfm.sdl2.sdl,
        gfm.sdl2.window,
@@ -56,8 +53,6 @@ final class SDL2Renderer
                 _renderer = null;
             }
         }
-
-        deprecated("Use .destroy instead") void close(){}
 
         /// Clear the current rendering target with the drawing color.
         /// See_also: $(LINK http://wiki.libsdl.org/SDL_RenderClear)

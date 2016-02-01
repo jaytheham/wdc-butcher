@@ -92,7 +92,7 @@ struct Matrix(T, int R, int C)
 
         /// Assign from other small matrices (same size, compatible type).
         @nogc ref Matrix opAssign(U)(U x) pure nothrow
-            if (is(typeof(U._isMatrix))
+            if (isMatrixInstantiation!U
                 && is(U._T : _T)
                 && (!is(U: Matrix))
                 && (U._R == R) && (U._C == C))
@@ -172,7 +172,7 @@ struct Matrix(T, int R, int C)
 
         /// Matrix * matrix multiplication.
         @nogc auto opBinary(string op, U)(U x) pure const nothrow
-            if (is(typeof(U._isMatrix)) && (U._R == C) && (op == "*"))
+            if (isMatrixInstantiation!U && (U._R == C) && (op == "*"))
         {
             Matrix!(T, R, U._C) result = void;
 
@@ -222,7 +222,7 @@ struct Matrix(T, int R, int C)
         /// Cast to other matrix types.
         /// If the size are different, the resulting matrix is truncated
         /// and/or filled with identity coefficients.
-        @nogc U opCast(U)() pure const nothrow if (is(typeof(U._isMatrix)))
+        @nogc U opCast(U)() pure const nothrow if (isMatrixInstantiation!U)
         {
             U res = U.identity();
             enum minR = R < U._R ? R : U._R;
@@ -261,7 +261,7 @@ struct Matrix(T, int R, int C)
 
         /// Convert 3x3 rotation matrix to quaternion.
         /// See_also: 3D Math Primer for Graphics and Game Development.
-        @nogc U opCast(U)() pure const nothrow if (is(typeof(U._isQuaternion))
+        @nogc U opCast(U)() pure const nothrow if (isQuaternionInstantiation!U
                                                    && is(U._T : _T)
                                                    && (_R == 3) && (_C == 3))
         {
@@ -330,7 +330,7 @@ struct Matrix(T, int R, int C)
         }
 
         /// Converts a 4x4 rotation matrix to quaternion.
-        @nogc U opCast(U)() pure const nothrow if (is(typeof(U._isQuaternion))
+        @nogc U opCast(U)() pure const nothrow if (isQuaternionInstantiation!U
                                                    && is(U._T : _T)
                                                    && (_R == 4) && (_C == 4))
         {
@@ -618,7 +618,6 @@ struct Matrix(T, int R, int C)
         alias T _T;
         enum _R = R;
         enum _C = C;
-        enum bool _isMatrix = true;
     }
 
     private
@@ -675,6 +674,15 @@ struct Matrix(T, int R, int C)
     }
 }
 
+template isMatrixInstantiation(U)
+{
+    private static void isMatrix(T, int R, int C)(Matrix!(T, R, C) x)
+    {
+    }
+
+    enum bool isMatrixInstantiation = is(typeof(isMatrix(U.init)));
+}
+
 // GLSL is a big inspiration here
 // we defines types with more or less the same names
 template mat2x2(T) { alias Matrix!(T, 2, 2) mat2x2; }
@@ -697,16 +705,12 @@ alias mat4x4 mat4;
 
 private string definePostfixAliases(string type)
 {
-    return "alias " ~ type ~ "!byte "   ~ type ~ "b;\n"
-         ~ "alias " ~ type ~ "!ubyte "  ~ type ~ "ub;\n"
-         ~ "alias " ~ type ~ "!short "  ~ type ~ "s;\n"
-         ~ "alias " ~ type ~ "!ushort " ~ type ~ "us;\n"
-         ~ "alias " ~ type ~ "!int "    ~ type ~ "i;\n"
-         ~ "alias " ~ type ~ "!uint "   ~ type ~ "ui;\n"
-         ~ "alias " ~ type ~ "!long "   ~ type ~ "l;\n"
-         ~ "alias " ~ type ~ "!ulong "  ~ type ~ "ul;\n"
-         ~ "alias " ~ type ~ "!float "  ~ type ~ "f;\n"
-         ~ "alias " ~ type ~ "!double " ~ type ~ "d;\n";
+    return "alias " ~ type ~ "!byte "   ~ type ~ "b;"
+         ~ "alias " ~ type ~ "!short "  ~ type ~ "s;"
+         ~ "alias " ~ type ~ "!int "    ~ type ~ "i;"
+         ~ "alias " ~ type ~ "!long "   ~ type ~ "l;"
+         ~ "alias " ~ type ~ "!float "  ~ type ~ "f;"
+         ~ "alias " ~ type ~ "!double " ~ type ~ "d;";
 }
 
 // define a lot of type names
@@ -757,13 +761,4 @@ unittest
         mat3x4f B;
         mat2x4f C = A * B;
     }
-
-    // Support user-defined types
-    import gfm.math.half;
-    alias mat2h = Matrix!(half, 2, 2);
-    mat2h b = mat2h(1, 2.0, 3.0L, 4.0f);
-
-    alias vec2h = Vector!(half, 2);
-    vec2h c = vec2h(4, 5);
-    c = b * c;
 }

@@ -4,10 +4,7 @@ import std.string;
 
 import derelict.opengl3.gl3;
 
-static if( __VERSION__ >= 2067 )
-    import std.experimental.logger;
-else
-    import std.historical.logger;
+import std.experimental.logger;
 
 import gfm.opengl.opengl,
        gfm.opengl.texture,
@@ -85,7 +82,6 @@ final class GLFBO
                 _initialized = false;
             }
         }
-        deprecated("Use .destroy instead") void close(){}
 
         /// Binds this FBO.
         /// Throws: $(D OpenGLException) on error.

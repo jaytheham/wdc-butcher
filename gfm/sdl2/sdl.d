@@ -11,10 +11,7 @@ import derelict.sdl2.sdl,
        derelict.util.exception,
        derelict.util.loader;
 
-static if( __VERSION__ >= 2067 )
-    import std.experimental.logger;
-else
-    import std.historical.logger;
+import std.experimental.logger;
 
 import gfm.sdl2.renderer,
        gfm.sdl2.window,
@@ -104,7 +101,6 @@ final class SDL2
                 _SDLInitialized = false;
             }
         }
-        deprecated("Use .destroy instead") void close(){}
 
         /// Returns: true if a subsystem is initialized.
         /// See_also: $(LINK http://wiki.libsdl.org/SDL_WasInit)

@@ -6,10 +6,7 @@ import derelict.sdl2.sdl,
        derelict.sdl2.ttf,
        derelict.util.exception;
 
-static if( __VERSION__ >= 2067 )
-    import std.experimental.logger;
-else
-    import std.historical.logger;
+import std.experimental.logger;
 
 import gfm.sdl2.sdl,
        gfm.sdl2.surface;
@@ -53,7 +50,6 @@ final class SDLTTF
                 TTF_Quit();
             }
         }
-        deprecated("Use .destroy instead") void close(){}
     }
 
     private
@@ -82,6 +78,8 @@ final class SDLFont
     {
         /// Loads a font from a file.
         /// Params:
+        ///     sdlttf = library object.
+        ///     filename = path of the font file.
         ///     ptSize = font size in 72 dpi ("This basically translates to pixel height" says the doc).
         /// Throws: $(D SDL2Exception) on error.
         this(SDLTTF sdlttf, string filename, int ptSize)
@@ -102,7 +100,6 @@ final class SDLFont
                 _font = null;
             }
         }
-        deprecated("Use .destroy instead") void close(){}
 
         /// Returns: Font style.
         int style()
