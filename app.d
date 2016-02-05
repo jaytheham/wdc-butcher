@@ -4,15 +4,20 @@ import std.math,
 
 import gfm.logger,
 	   gfm.sdl2,
+	   gfm.math,
 	   gfm.opengl;
 
-import test.drawer;
+import camera,
+	   test.drawer;
 
-void main()
+private
 {
 	int width = 1280;
 	int height = 720;
+}
 
+void main()
+{
 	auto log = new ConsoleLogger();
 
 	// load dynamic libraries
@@ -41,15 +46,19 @@ void main()
 
 	GLProgram program = createShader(gl);
 
+	Camera basicCamera = new Camera(gfm.math.radians(45f), width/height);
+
 	auto test = new Drawer(gl, program);
 
 	glPointSize(3.0);
 
 	while(!sdl2.keyboard.isPressed(SDLK_ESCAPE) && !sdl2.wasQuitRequested())
 	{
+		sdl2.processEvents();
+		basicCamera.update(sdl2);
+
 		glClearColor(0.1, 0.2, 0.4, 1);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		sdl2.processEvents();
 
 		if (sdl2.keyboard.isPressed(SDLK_p))
 		{
@@ -57,24 +66,25 @@ void main()
 		}
 		else
 		{
-			test.drawTriangles();
+			test.drawTriangles(basicCamera);
 		}
 
 		window.swapBuffers();
 	}
 }
 
-private auto createShader(OpenGL opengl) {
+private auto createShader(OpenGL opengl)
+{
 	// create a shader program made of a single fragment shader
 	string tunnelProgramSource =
 		q{#version 330 core
 
 		#if VERTEX_SHADER
 		in vec3 position;
+		uniform mat4 mvpMatrix;
 		void main()
 		{
-			gl_Position.xyz = position;
-			gl_Position.w = 1.0;
+			gl_Position = mvpMatrix * vec4(position, 1.0);
 		}
 		#endif
 
