@@ -21,7 +21,7 @@ class Drawer {
 	{
 		this.program = prgrm;
 
-		model = mat4f.translation(vec3f(0,0,0));
+		model = mat4f.translation(vec3f(0, 0, 0));
 
 		triangle[0] = Vertex(vec3f(-0.1, -0.1, 0));
 		triangle[1] = Vertex(vec3f(+0.1, -0.1, 0));
