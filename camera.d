@@ -1,5 +1,5 @@
 
-import std.math;
+import std.math: sin, cos, PI;
 import gfm.math,
 	   gfm.sdl2;
 

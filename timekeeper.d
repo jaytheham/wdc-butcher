@@ -1,6 +1,6 @@
 
-import std.algorithm,
-		core.time: MonoTime;
+import std.algorithm: max;
+import core.time: MonoTime;
 
 class TimeKeeper
 {
@@ -12,7 +12,8 @@ static:
 		 int targetFPS;
 	}
 
-	public void start(int fps) {
+	public void start(int fps)
+	{
 		previousTime = MonoTime.currTime();
 		targetFPS = fps;
 	}
