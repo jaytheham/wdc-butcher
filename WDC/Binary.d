@@ -9,10 +9,21 @@ class Binary
 		enum RegionType { PAL, NTSC };
 		RegionType region;
 		ubyte[] binary;
+
+		uint[RegionType] carAssetsOffset;
+		enum carAssetsStringOffset = 0xc00;
+		enum carAssetsSize = 0x80;
+	}
+
+	private void setupArrays()
+	{
+		carAssetsOffset = [ RegionType.PAL : 0x83620, RegionType.NTSC : 0x81c30];
 	}
 
 	this(string filePath)
 	{
+		setupArrays();
+
 		File binaryHandle = File(filePath, "r");
 		binary.length = cast(uint)binaryHandle.size;
 		binaryHandle.rawRead(binary);
@@ -28,7 +39,28 @@ class Binary
 	}
 
 public:
-	// getCarList
+	char[][] getCarList()
+	{
+		int offset = 0;
+		int nameSize;
+		uint nameOffset;
+		char[][] carNames;
+		while(binary[carAssetsOffset[region] + offset] == 0x80)
+		{
+			nameOffset = (binary[carAssetsOffset[region] + offset + 1] << 16) +
+						 (binary[carAssetsOffset[region] + offset + 2] << 8) +
+						 binary[carAssetsOffset[region] + offset + 3] +
+						 carAssetsStringOffset;
+			nameSize = 0;
+			while(binary[nameOffset + nameSize] != 0)
+			{
+				nameSize++;
+			}
+			carNames ~= cast(char[])binary[nameOffset..(nameOffset + nameSize)];
+			offset += carAssetsSize;
+		}
+		return carNames;
+	}
 	// getCar
 	// getTrackList
 	// getTrack
