@@ -13,15 +13,15 @@ class Camera
 		vec3f direction;
 		vec3f right;
 		vec3f up;
-		float speed = 4f;
+		float speed = 500f;
 		float mouseSpeed = 0.15f;
 		float hAngle = 0f;
 		float vAngle = -0.45f;
 	}
 
-	this(float fov, float ratio, float nearClip = 0.1f, float farClip = 100.0f)
+	this(float fov, float ratio, float nearClip = 1f, float farClip = 100000.0f)
 	{
-		position = vec3f(0, 5, -10);
+		position = vec3f(0, 800, -3000);
 		direction = vec3f(0, 0, 1);
 		projection = mat4f.perspective(fov, ratio, nearClip, farClip);
 		view = mat4f.lookAt(position, vec3f(0, 0, 0,), vec3f(0, 1, 0));

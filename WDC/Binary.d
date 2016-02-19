@@ -1,24 +1,36 @@
 module wdc.binary;
 
-import std.stdio;
+import std.conv,
+	   std.zlib,
+	   std.file,
+	   std.format,
+	   std.bitmanip,
+	   std.typecons,
+	   std.stdio: File, writeln, writefln;
+
+import gfm.opengl;
+
+import wdc.car;
 
 class Binary
 {
-	private
-	{
-		enum RegionType { PAL, NTSC };
-		RegionType region;
-		ubyte[] binary;
 
-		uint[RegionType] carAssetsOffset;
-		enum carAssetsStringOffset = 0xc00;
-		enum carAssetsSize = 0x80;
-	}
+private:
+	
+	enum RegionType { PAL, NTSC };
+	RegionType region;
+	ubyte[] binary;
 
-	private void setupArrays()
+	uint[RegionType] carAssetsOffset;
+	enum carAssetsStringOffset = 0xc00;
+	enum carAssetsSize = 0x80;
+
+	pure void setupArrays()
 	{
 		carAssetsOffset = [ RegionType.PAL : 0x83620, RegionType.NTSC : 0x81c30];
 	}
+
+public:
 
 	this(string filePath)
 	{
@@ -31,14 +43,13 @@ class Binary
 		
 		enforceBigEndian();
 
-		region = binary[0x3e] == 0x45 ? RegionType.NTSC : RegionType.PAL;
+		region = binary[0x3e] == 'E' ? RegionType.NTSC : RegionType.PAL;
 
 		writeln("Loaded ROM:");
 		writeln(cast(char[])binary[0x20..0x34]);
 		writefln("Version detected as %s", region);
 	}
 
-public:
 	char[][] getCarList()
 	{
 		int offset = 0;
@@ -61,7 +72,76 @@ public:
 		}
 		return carNames;
 	}
-	// getCar
+
+	Car getCar(OpenGL opengl, GLProgram prgrm, int carIndex)
+	{
+		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
+		int offset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
+		
+		return new Car(opengl, prgrm, decompressZlibBlock(offset), Yes.fromBinary);
+	}
+
+	void dumpCarData(int index)
+	{
+		string workingDir = getcwd();
+		string outputDir = workingDir ~ "\\output";
+		if (!exists(outputDir))
+		{
+			mkdir(outputDir);
+		}
+		chdir(outputDir);
+
+		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * index;
+		int offset, endOffset;
+		int wordNum = 5;
+
+		while (wordNum < 0xf)
+		{
+			offset = (binary[carAssetOffset + wordNum * 4 + 1] << 16) +
+					 (binary[carAssetOffset + wordNum * 4 + 2] << 8) +
+					  binary[carAssetOffset + wordNum * 4 + 3];
+			wordNum += 2;
+				if (binary[offset + 0xc] == 0x78)
+				{
+					auto output = decompressZlibBlock(offset);
+					write(format("%.8x", offset), output);
+					offset += output.length;
+				}
+				else
+				{
+					writefln("%x not zlib", offset);
+				}
+		}
+		chdir(workingDir);
+	}
+
+	ubyte[] decompressZlibBlock(int offset)
+	{
+		int blockSize = peek!int(binary[offset..offset + 4]);
+		int blockEnd = offset + blockSize;
+		//int blockOutputSize = peek!int(binary[offset + 4..offset + 8]);
+		int zlibSize = 0;
+		ubyte[] output;
+		offset += 0x8;
+
+		do
+		{
+			offset += zlibSize;
+			zlibSize = peek!int(binary[offset..offset + 4]);
+			offset += 4;
+			writefln("%x %x", offset, zlibSize);
+			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
+
+			writefln("%x decompressed", offset);
+
+			if (zlibSize % 2 == 1) // Next file is aligned to short
+			{
+				zlibSize++;
+			}
+		} while (offset + zlibSize < blockEnd);
+
+		return output;
+	}
 	// getTrackList
 	// getTrack
 	// replaceCar

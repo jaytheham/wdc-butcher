@@ -10,7 +10,7 @@ class Drawer {
 	{
 		vec3f position;
 	}
-	private Vertex[3] triangle;
+	private Vertex[6] triangle;
 	private mat4f model;
 	private GLProgram program;
 	private GLVAO vao;
@@ -23,9 +23,12 @@ class Drawer {
 
 		model = mat4f.translation(vec3f(0, 0, 0));
 
-		triangle[0] = Vertex(vec3f(-0.1, -0.1, 0));
-		triangle[1] = Vertex(vec3f(+0.1, -0.1, 0));
-		triangle[2] = Vertex(vec3f(+0.1, +0.1, 0));
+		triangle[0] = Vertex(vec3f(0, 0, 0));
+		triangle[1] = Vertex(vec3f(0, 100, 0));
+		triangle[2] = Vertex(vec3f(0, 0, 0));
+		triangle[3] = Vertex(vec3f(100, 0, 0));
+		triangle[4] = Vertex(vec3f(0, 0, 0));
+		triangle[5] = Vertex(vec3f(0, 0, 100));
 
 		this.vao = new GLVAO(opengl);
 
@@ -49,12 +52,12 @@ class Drawer {
 		program.unuse();
 	}
 
-	public void drawPoints()
+	public void drawOrigin(Camera cam)
 	{
-		program.uniform("mvpMatrix").set(mat4f.identity);
+		program.uniform("mvpMatrix").set(cam.getPVM(model));
 		program.use();
 		vao.bind();
-		glDrawArrays(GL_POINTS, 0, cast(int)(vbo.size() / vs.vertexSize()));
+		glDrawArrays(GL_LINES, 0, cast(int)(vbo.size() / vs.vertexSize()));
 		vao.unbind();
 		program.unuse();
 	}
