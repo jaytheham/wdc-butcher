@@ -233,7 +233,8 @@ private void listCars()
 
 private void displayCar(int index)
 {
-	selectedCar = binaryFile.getCar(gl, program, index);
+	selectedCar = binaryFile.getCar(index);
+	selectedCar.enableDrawing(gl, program);
 	setWindowVisible(true);
 	writefln("Displaying car #%d", index);
 	writeln("Press Escape to return to command window");

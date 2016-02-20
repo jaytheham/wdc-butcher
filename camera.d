@@ -21,7 +21,7 @@ class Camera
 
 	this(float fov, float ratio, float nearClip = 1f, float farClip = 100000.0f)
 	{
-		position = vec3f(0, 800, -3000);
+		position = vec3f(0, 1000, -2500);
 		direction = vec3f(0, 0, 1);
 		projection = mat4f.perspective(fov, ratio, nearClip, farClip);
 		view = mat4f.lookAt(position, vec3f(0, 0, 0,), vec3f(0, 1, 0));
@@ -54,11 +54,11 @@ class Camera
 		}
 		if (sdl2.keyboard.isPressed(SDLK_d))
 		{
-			position += right * deltaT * speed;
+			position += right * deltaT * speed * speedBoost;
 		}
 		if (sdl2.keyboard.isPressed(SDLK_a))
 		{
-			position -= right * deltaT * speed;
+			position -= right * deltaT * speed * speedBoost;
 		}
 		view = mat4f.lookAt(position, position + direction, up);
 	}

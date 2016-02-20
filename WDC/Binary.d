@@ -73,12 +73,13 @@ public:
 		return carNames;
 	}
 
-	Car getCar(OpenGL opengl, GLProgram prgrm, int carIndex)
+	Car getCar(int carIndex)
 	{
 		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
-		int offset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
+		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
+		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x18..carAssetOffset + 0x1c]);
 		
-		return new Car(opengl, prgrm, decompressZlibBlock(offset), Yes.fromBinary);
+		return new Car(decompressZlibBlock(dataBlobOffset), decompressZlibBlock(textureBlobOffset));
 	}
 
 	void dumpCarData(int index)
