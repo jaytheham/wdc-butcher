@@ -13,18 +13,18 @@ class Camera
 		vec3f direction;
 		vec3f right;
 		vec3f up;
-		float speed = 500f;
+		float speed = 700f;
 		float mouseSpeed = 0.15f;
-		float hAngle = 0f;
-		float vAngle = -0.45f;
+		float hRadians = -0.78f;
+		float vRadians = -0.65f;
 	}
 
 	this(float fov, float ratio, float nearClip = 1f, float farClip = 100000.0f)
 	{
-		position = vec3f(0, 1000, -2500);
+		position = vec3f(1000, 1000, -1000);
 		direction = vec3f(0, 0, 1);
 		projection = mat4f.perspective(fov, ratio, nearClip, farClip);
-		view = mat4f.lookAt(position, vec3f(0, 0, 0,), vec3f(0, 1, 0));
+		view = mat4f.identity();
 	}
 
 	public mat4f getPVM(mat4f model)
@@ -36,10 +36,10 @@ class Camera
 	{
 		int deltaX = (sdl2.mouse.lastDeltaX() >= -2 && sdl2.mouse.lastDeltaX() <= 2) ? 0 : sdl2.mouse.lastDeltaX();
 		int deltaY = (sdl2.mouse.lastDeltaY() >= -2 && sdl2.mouse.lastDeltaY() <= 2) ? 0 : sdl2.mouse.lastDeltaY();
-		hAngle += mouseSpeed * deltaT * -deltaX;
-		vAngle += mouseSpeed * deltaT * -deltaY;
-		direction = [cos(vAngle) * sin(hAngle), sin(vAngle), cos(vAngle) * cos(hAngle)];
-		right = [sin(hAngle - PI / 2), 0, cos(hAngle - PI / 2)];
+		hRadians += mouseSpeed * deltaT * -deltaX;
+		vRadians += mouseSpeed * deltaT * -deltaY;
+		direction = [cos(vRadians) * sin(hRadians), sin(vRadians), cos(vRadians) * cos(hRadians)];
+		right = [sin(hRadians - PI / 2), 0, cos(hRadians - PI / 2)];
 		up = gfm.math.vector.cross(right, direction);
 
 		float speedBoost = sdl2.keyboard.isPressed(SDLK_LSHIFT) ? 5f : 1f;

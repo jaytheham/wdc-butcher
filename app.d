@@ -1,24 +1,24 @@
 import std.math,
-	   std.conv,
-	   std.stdio,
-	   std.string,
-	   std.random,
-	   std.format,
-	   std.typecons;
+	std.conv,
+	std.stdio,
+	std.string,
+	std.random,
+	std.format,
+	std.typecons,
 
-import core.thread;
+	core.thread,
 
-import gfm.logger,
-	   gfm.sdl2,
-	   gfm.math,
-	   gfm.opengl;
+	gfm.logger,
+	gfm.sdl2,
+	gfm.math,
+	gfm.opengl,
 
-import wdc.car,
-	   wdc.binary;
+	wdc.car,
+	wdc.binary,
 
-import camera,
-	   timekeeper,
-	   test.drawer;
+	camera,
+	timekeeper,
+	test.drawer;
 
 private
 {
@@ -95,7 +95,7 @@ void main(string[] args)
 		}
 		else
 		{
-			writeln("\nWaiting for input:");
+			write("\nWaiting for input: ");
 			string[] commands = readln().removechars("{}").split();
 			if (commands.length > 0)
 			{
@@ -226,8 +226,9 @@ private auto createShader(OpenGL opengl)
 private void listCars()
 {
 	writeln("\nIndex\tCar Name");
-	foreach(i, c; binaryFile.getCarList()){
-		writefln("%d\t%s", i, c);
+	writeln("-----\t--------\n");
+	foreach(index, carName; binaryFile.getCarList()){
+		writefln("%d\t%s", index, carName);
 	}
 }
 

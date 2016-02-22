@@ -18,12 +18,13 @@ class Binary
 private:
 	
 	enum RegionType { PAL, NTSC };
-	RegionType region;
-	ubyte[] binary;
 
 	uint[RegionType] carAssetsOffset;
 	enum carAssetsStringOffset = 0xc00;
 	enum carAssetsSize = 0x80;
+
+	RegionType region;
+	ubyte[] binary;
 
 	pure void setupArrays()
 	{
@@ -159,7 +160,7 @@ private:
 		switch(binary[0])
 		{
 			case 0x80:
-				// Big Endion
+				// Big Endian
 				break;
 			case 0x40:
 				// Little Endian

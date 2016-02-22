@@ -13,13 +13,14 @@ class Car
 {
 	private
 	{
-		ubyte[] dataBlob;
-		ubyte[] textureBlob;
-
-		private struct Vertex
+		struct Vertex
 		{
 			vec3f position;
 		}
+		
+		ubyte[] dataBlob;
+		ubyte[] textureBlob;
+
 		private Vertex[] carVertices;
 		private mat4f model;
 		private GLProgram program;
@@ -39,7 +40,7 @@ class Car
 	void enableDrawing(OpenGL opengl, GLProgram prgrm)
 	{
 		program = prgrm;
-		model = mat4f.translation(vec3f(0, 0, 0));
+		model = mat4f.identity();
 
 		vao = new GLVAO(opengl);
 		vbo = new GLBuffer(opengl, GL_ARRAY_BUFFER, GL_STATIC_DRAW, carVertices[]);
