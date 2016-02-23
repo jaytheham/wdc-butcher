@@ -8,13 +8,15 @@ import gfm.math,
 class Drawer {
 	private struct Vertex
 	{
-		vec3f position;
+		vec3i position;
 	}
-	private Vertex[6] triangle;
+	private Vertex[] triangle;
+	private ushort[] indices;
 	private mat4f model;
 	private GLProgram program;
 	private GLVAO vao;
 	private GLBuffer vbo;
+	private GLBuffer vibo;
 	private VertexSpecification!Vertex vs;
 
 	this(OpenGL opengl, GLProgram prgrm)
@@ -23,20 +25,24 @@ class Drawer {
 
 		model = mat4f.translation(vec3f(0, 0, 0));
 
-		triangle[0] = Vertex(vec3f(0, 0, 0));
-		triangle[1] = Vertex(vec3f(0, 100, 0));
-		triangle[2] = Vertex(vec3f(0, 0, 0));
-		triangle[3] = Vertex(vec3f(100, 0, 0));
-		triangle[4] = Vertex(vec3f(0, 0, 0));
-		triangle[5] = Vertex(vec3f(0, 0, 100));
+		indices = [0,1,5];
+
+		triangle ~= Vertex(vec3i(0, 0, 0));
+		triangle ~= Vertex(vec3i(0, 100, 0));
+		triangle ~= Vertex(vec3i(0, 0, 0));
+		triangle ~= Vertex(vec3i(100, 0, 0));
+		triangle ~= Vertex(vec3i(0, 0, 0));
+		triangle ~= Vertex(vec3i(0, 0, 100));
 
 		this.vao = new GLVAO(opengl);
 
 		vbo = new GLBuffer(opengl, GL_ARRAY_BUFFER, GL_STATIC_DRAW, triangle[]);
+		vibo = new GLBuffer(opengl, GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices[]);
 
 		vs = new VertexSpecification!Vertex(program);
 
 		vao.bind();
+		vibo.bind();
 		vbo.bind();
 		vs.use();
 		vao.unbind();
@@ -47,7 +53,8 @@ class Drawer {
 		program.uniform("mvpMatrix").set(cam.getPVM(model));
 		program.use();
 		vao.bind();
-		glDrawArrays(GL_TRIANGLES, 0, cast(int)(vbo.size() / vs.vertexSize()));
+		//glDrawArrays(GL_TRIANGLES, 0, cast(int)(vbo.size() / vs.vertexSize()));
+		glDrawElements(GL_TRIANGLES, indices.length, GL_UNSIGNED_SHORT, cast(void*)0);
 		vao.unbind();
 		program.unuse();
 	}

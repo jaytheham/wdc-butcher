@@ -106,7 +106,7 @@ public:
 				if (binary[offset + 0xc] == 0x78)
 				{
 					auto output = decompressZlibBlock(offset);
-					write(format("%.8x", offset), output);
+					write(format("%.2d_%.8x", index, offset), output);
 					offset += output.length;
 				}
 				else
@@ -124,6 +124,7 @@ public:
 		//int blockOutputSize = peek!int(binary[offset + 4..offset + 8]);
 		int zlibSize = 0;
 		ubyte[] output;
+		writefln("Inflating data from %x", offset);
 		offset += 0x8;
 
 		do
@@ -131,12 +132,12 @@ public:
 			offset += zlibSize;
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
-			writefln("%x %x", offset, zlibSize);
+			
 			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
 
 			writefln("%x decompressed", offset);
 
-			if (zlibSize % 2 == 1) // Next file is aligned to short
+			if (zlibSize % 2 == 1) // Next file will be aligned to short
 			{
 				zlibSize++;
 			}

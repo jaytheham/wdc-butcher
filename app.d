@@ -55,6 +55,8 @@ void main(string[] args)
 	gl.reload();
 	glPointSize(3.0);
 	glClearColor(0.1, 0.2, 0.4, 1);
+	auto mode = GL_LINE;
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	// redirect OpenGL output to our Logger
 	gl.redirectDebugOutput();
 
@@ -80,9 +82,19 @@ void main(string[] args)
 			
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			if (sdl2.keyboard.isPressed(SDLK_p))
+			if (sdl2.keyboard.testAndRelease(SDLK_n))
 			{
-				test.drawTriangles(basicCamera);
+				selectedCar.prevModelBlock();
+			}
+			if (sdl2.keyboard.testAndRelease(SDLK_m))
+			{
+				selectedCar.nextModelBlock();
+			}
+
+			if (sdl2.keyboard.testAndRelease(SDLK_p))
+			{
+				mode = mode == GL_FILL ? GL_LINE : GL_FILL;
+				glPolygonMode(GL_FRONT_AND_BACK, mode);
 			}
 			else
 			{
@@ -99,6 +111,7 @@ void main(string[] args)
 			string[] commands = readln().removechars("{}").split();
 			if (commands.length > 0)
 			{
+				writeln(); 
 				switch (commands[0])
 				{
 					case "-d":
@@ -202,7 +215,7 @@ private auto createShader(OpenGL opengl)
 		q{#version 330 core
 
 		#if VERTEX_SHADER
-		in vec3 position;
+		in ivec3 position;
 		uniform mat4 mvpMatrix;
 		void main()
 		{
@@ -237,7 +250,7 @@ private void displayCar(int index)
 	selectedCar = binaryFile.getCar(index);
 	selectedCar.enableDrawing(gl, program);
 	setWindowVisible(true);
-	writefln("Displaying car #%d", index);
+	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");
 }
 
