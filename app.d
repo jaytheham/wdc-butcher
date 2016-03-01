@@ -55,6 +55,8 @@ void main(string[] args)
 	gl.reload();
 	glPointSize(3.0);
 	glClearColor(0.1, 0.2, 0.4, 1);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 	auto mode = GL_LINE;
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	// redirect OpenGL output to our Logger
@@ -96,11 +98,9 @@ void main(string[] args)
 				mode = mode == GL_FILL ? GL_LINE : GL_FILL;
 				glPolygonMode(GL_FRONT_AND_BACK, mode);
 			}
-			else
-			{
-				test.drawOrigin(basicCamera);
-				selectedCar.draw(basicCamera);
-			}
+
+			//test.drawTriangles(basicCamera);
+			selectedCar.draw(basicCamera);
 
 			window.swapBuffers();
 			Thread.sleep(TimeKeeper.uSecsUntilNextFrame().usecs);
@@ -216,19 +216,26 @@ private auto createShader(OpenGL opengl)
 
 		#if VERTEX_SHADER
 		in ivec3 position;
+		in vec2 vertexUV;
+
+		out vec2 UV;
+
 		uniform mat4 mvpMatrix;
 		void main()
 		{
 			gl_Position = mvpMatrix * vec4(position, 1.0);
+			UV = vertexUV;
 		}
 		#endif
 
 		#if FRAGMENT_SHADER
+		in vec2 UV;
 		out vec3 color;
+		uniform sampler2D myTextureSampler;
 
 		void main()
 		{
-			color = vec3(0.95, 0.95, 1.0);
+			color = texture( myTextureSampler, UV ).rgb;
 		}
 		#endif
 	};

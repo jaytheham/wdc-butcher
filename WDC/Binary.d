@@ -132,8 +132,9 @@ public:
 			offset += zlibSize;
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
-			
-			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
+			ubyte[] temp = cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
+			write(format("part %.8x", offset), temp);
+			output ~= temp;
 
 			writefln("%x decompressed", offset);
 
