@@ -22,7 +22,7 @@ class Car
 		}
 
 		ubyte[] dataBlob;
-		ubyte[0x20] palette;
+		ubyte[0x100] palettes;
 		Vertex[] carVertices;
 		mat4f model;
 		GLProgram program;
@@ -34,6 +34,10 @@ class Car
 		int modelBlockIndex = 0;
 		int numModelBlocks = 0;
 
+		int paletteIndex = 0;
+		immutable int numPalettes = 8;
+		immutable int paletteSize = 0x20;
+
 		enum modelBlockPointerOffset = 0xf4;
 		enum textureCMDPointersOffset = 0xa0;
 		enum textureBlobOffset = 0x538;
@@ -44,9 +48,9 @@ class Car
 		ubyte[] textureBytes;
 	}
 
-	this(ubyte[] data, ubyte[] textures, ubyte[] curPalette)
+	this(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
 	{
-		createFromBinary(data, textures, curPalette);
+		createFromBinary(data, textures, carPalettes);
 	}
 
 	void enableDrawing(OpenGL opengl, GLProgram prgrm)
@@ -97,13 +101,43 @@ class Car
 		updateBuffers();
 	}
 
-private:
-	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] curPalette)
+	void nextPalette()
 	{
+		setPalette(paletteIndex + 1);
+	}
+
+	void prevPalette()
+	{
+		setPalette(paletteIndex - 1);
+	}
+
+	void setPalette(int paletteNum)
+	{
+		paletteIndex = paletteNum;
+		if (paletteIndex < 0)
+		{
+			paletteIndex = numPalettes - 1;
+		}
+		else if (paletteIndex >= numPalettes)
+		{
+			paletteIndex = 0;
+		}
+		loadTexture();
+		setupTextures();
+	}
+
+private:
+	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
+	{
+		//int textureStart = peek!int(data[0x88..0x8c]) + 0x20;
+		//dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
+		
 		// Here we clip the texture data because uncompress seems to be giving enlarged output sometimes
+		// TODO: this hardcoded offset is not always correct, and neither is the "textureStart" version above
 		dataBlob = replaceSlice(data, data[0x538..0x93b8], textures[0..0x8e80]);
+		
 		//std.file.write("datablob", dataBlob);
-		palette[] = curPalette[];
+		palettes[] = carPalettes[];
 
 		while (peek!int(dataBlob[modelBlockPointerOffset + numModelBlocks * 0x10
 		                         ..
@@ -193,15 +227,11 @@ private:
 		textureIndices.length = maxWidth * maxHeight;
 		textureIndices[] = dataBlob[textureOffset..textureOffset + textureIndices.length];
 		straightenIndices(textureIndices, maxWidth, maxHeight);
-		// TODO: different palettes eg:
-		// stallion headlights uses 3rd set of colors, not first
-		// stallion front windscreen uses second set
-
-		// Also, the LoD models appear to use a different texture offset to the detailed car parts
-		// Using the same offset the texture is there but starting at the wrong point?
+		// TODO: how the func does it decide which palette to use?
 
 		int w = 0, h = 0;
 		ubyte index;
+		auto palette = palettes[paletteIndex * paletteSize..paletteIndex * paletteSize + paletteSize];
 		while (h < maxHeight)
 		{
 			w = 0;

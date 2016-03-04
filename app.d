@@ -92,6 +92,14 @@ void main(string[] args)
 			{
 				selectedCar.nextModelBlock();
 			}
+			if (sdl2.keyboard.testAndRelease(SDLK_j))
+			{
+				selectedCar.prevPalette();
+			}
+			if (sdl2.keyboard.testAndRelease(SDLK_k))
+			{
+				selectedCar.nextPalette();
+			}
 
 			if (sdl2.keyboard.testAndRelease(SDLK_p))
 			{

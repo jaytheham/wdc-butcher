@@ -84,7 +84,7 @@ public:
 		
 		return new Car(decompressZlibBlock(dataBlobOffset),
 						decompressZlibBlock(textureBlobOffset),
-						binary[paletteOffset..paletteOffset + carPaletteSize]);
+						binary[paletteOffset..paletteOffset + 8 * carPaletteSize]);
 	}
 
 	void dumpCarData(int index)
