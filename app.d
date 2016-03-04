@@ -66,7 +66,7 @@ void main(string[] args)
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
 
-	auto test = new Drawer(gl, program);
+	//auto test = new Drawer(gl, program);
 	
 
 	while(!sdl2.wasQuitRequested())

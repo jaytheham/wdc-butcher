@@ -22,6 +22,7 @@ class Car
 		}
 
 		ubyte[] dataBlob;
+		ubyte[0x20] palette;
 		Vertex[] carVertices;
 		mat4f model;
 		GLProgram program;
@@ -43,9 +44,9 @@ class Car
 		ubyte[] textureBytes;
 	}
 
-	this(ubyte[] data, ubyte[] textures)
+	this(ubyte[] data, ubyte[] textures, ubyte[] curPalette)
 	{
-		createFromBinary(data, textures);
+		createFromBinary(data, textures, curPalette);
 	}
 
 	void enableDrawing(OpenGL opengl, GLProgram prgrm)
@@ -97,11 +98,12 @@ class Car
 	}
 
 private:
-	void createFromBinary(ubyte[] data, ubyte[] textures)
+	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] curPalette)
 	{
 		// Here we clip the texture data because uncompress seems to be giving enlarged output sometimes
 		dataBlob = replaceSlice(data, data[0x538..0x93b8], textures[0..0x8e80]);
-		std.file.write("datablob", dataBlob);
+		//std.file.write("datablob", dataBlob);
+		palette[] = curPalette[];
 
 		while (peek!int(dataBlob[modelBlockPointerOffset + numModelBlocks * 0x10
 		                         ..
@@ -116,6 +118,7 @@ private:
 	void updateBuffers()
 	{
 		vbo.setData(carVertices[]);
+		setupTextures();
 	}
 
 	void setupBuffers()
@@ -139,131 +142,97 @@ private:
 		}
 	}
 
+	void straightenIndices(ubyte[] rawIndices, int bytesWide, int height)
+	{
+		// Word swap the odd rows
+		int w = 0, h = 0;
+		ubyte[4] tempBytes;
+		int byteNum;
+		int curOffset;
+		
+		assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
+
+		while (h < height)
+		{
+			if (h % 2 == 1)
+			{
+				byteNum = 0;
+				curOffset = h * bytesWide;
+				while (byteNum < bytesWide)
+				{
+					tempBytes[] = rawIndices[curOffset + byteNum..curOffset + byteNum + 4];
+					rawIndices[curOffset + byteNum..curOffset + byteNum + 4] = 
+						rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8];
+					rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
+
+					byteNum += 8;
+				}
+			}
+			h++;
+		}
+	}
+
 	void loadTexture()
 	{
 		textureBytes.length = 0;
 		// use modelBlockIndex to index into the first lot of texture pointer pointers
 		int textureCmdPointers = peek!int(dataBlob[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
-		writefln("a %x", textureCmdPointers);
+		writefln("\n#%x @%x", modelBlockIndex, textureCmdPointers);
 		int textureCmdPointer = textureCmdPointers + modelBlockIndex * 4;
 		writefln("b %x", textureCmdPointer);
 		int textureCmdOffset = peek!int(dataBlob[textureCmdPointer..textureCmdPointer + 4]);
 		writefln("c %x", textureCmdOffset);
 
-		// get the texture offset from the command
 		int textureOffset = peek!int(dataBlob[textureCmdOffset + 4..textureCmdOffset + 8]);
 		writefln("d %x", textureOffset);
 
-		/// grab the palette, convert to 1 byte per color component
-		/// create the final array from the palette
 		int maxWidth = textureWidth / 2;
 		int maxHeight = textureHeight;
+		
+		ubyte[] textureIndices;
+		textureIndices.length = maxWidth * maxHeight;
+		textureIndices[] = dataBlob[textureOffset..textureOffset + textureIndices.length];
+		straightenIndices(textureIndices, maxWidth, maxHeight);
+		// TODO: different palettes eg:
+		// stallion headlights uses 3rd set of colors, not first
+		// stallion front windscreen uses second set
+
+		// Also, the LoD models appear to use a different texture offset to the detailed car parts
+		// Using the same offset the texture is there but starting at the wrong point?
+
 		int w = 0, h = 0;
+		ubyte index;
 		while (h < maxHeight)
 		{
 			w = 0;
 			while (w < maxWidth)
 			{
-				//writeln("L1");
-				textureBytes ~= dataBlob[textureOffset + w + (h * maxWidth)] & 0xf0;
-				//writefln("%x", textureOffset + w + (h * maxWidth));
-				textureBytes ~= (dataBlob[textureOffset + w + (h * maxWidth)] & 0x0f) << 4;
-				//writefln("::%x %x", textureBytes[$ -1], textureBytes[$ -2]);
-				//readln();
+				index = ((textureIndices[ w + (h * maxWidth)] & 0xf0) >> 3) ;
+				textureBytes ~= palette[index + 1];
+				textureBytes ~= palette[index];
+				
+				index = (textureIndices[w + (h * maxWidth)] & 0x0f) * 2;
+				textureBytes ~= palette[index + 1];
+				textureBytes ~= palette[index];
 				w++;
 			}
-			if (h % 2 == 1)
-				{
-					
-					byte tempByte = textureBytes[$ - textureWidth];
-					textureBytes[$ - textureWidth] = textureBytes[($ - textureWidth) + 8];
-					textureBytes[($ - textureWidth) + 8] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 1];
-					textureBytes[($ - textureWidth) + 1] = textureBytes[($ - textureWidth) + 9];
-					textureBytes[($ - textureWidth) + 9] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 2];
-					textureBytes[($ - textureWidth) + 2] = textureBytes[($ - textureWidth) + 10];
-					textureBytes[($ - textureWidth) + 10] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 3];
-					textureBytes[($ - textureWidth) + 3] = textureBytes[($ - textureWidth) + 11];
-					textureBytes[($ - textureWidth) + 11] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 4];
-					textureBytes[($ - textureWidth) + 4] = textureBytes[($ - textureWidth) + 12];
-					textureBytes[($ - textureWidth) + 12] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 5];
-					textureBytes[($ - textureWidth) + 5] = textureBytes[($ - textureWidth) + 13];
-					textureBytes[($ - textureWidth) + 13] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 6];
-					textureBytes[($ - textureWidth) + 6] = textureBytes[($ - textureWidth) + 14];
-					textureBytes[($ - textureWidth) + 14] = tempByte;
-
-					tempByte = textureBytes[($ - textureWidth) + 7];
-					textureBytes[($ - textureWidth) + 7] = textureBytes[($ - textureWidth) + 15];
-					textureBytes[($ - textureWidth) + 15] = tempByte;
-
-					//writeln(textureBytes);
-					//writefln("__ %x %x %x %x", textureBytes[$-4], textureBytes[$-3],textureBytes[$-2],textureBytes[$-1]);
-
-					// row end
-					tempByte = textureBytes[$ - 8];
-					textureBytes[$ - 8] = textureBytes[$ - 16];
-					textureBytes[$ - 16] = tempByte;
-
-					tempByte = textureBytes[$ - 7];
-					textureBytes[$ - 7] = textureBytes[$ - 15];
-					textureBytes[$ - 15] = tempByte;
-
-					tempByte = textureBytes[$ - 6];
-					textureBytes[$ - 6] = textureBytes[$ - 14];
-					textureBytes[$ - 14] = tempByte;
-
-					tempByte = textureBytes[$ - 5];
-					textureBytes[$ - 5] = textureBytes[$ - 13];
-					textureBytes[$ - 13] = tempByte;
-
-					tempByte = textureBytes[$ - 4];
-					textureBytes[$ - 4] = textureBytes[$ - 12];
-					textureBytes[$ - 12] = tempByte;
-
-					tempByte = textureBytes[$ - 3];
-					textureBytes[$ - 3] = textureBytes[$ - 11];
-					textureBytes[$ - 11] = tempByte;
-
-					tempByte = textureBytes[$ - 2];
-					textureBytes[$ - 2] = textureBytes[$ - 10];
-					textureBytes[$ - 10] = tempByte;
-
-					tempByte = textureBytes[$ - 1];
-					textureBytes[$ - 1] = textureBytes[$ - 9];
-					textureBytes[$ - 9] = tempByte;
-
-					//writefln("__ %x %x %x %x", textureBytes[$-4], textureBytes[$-3],textureBytes[$-2],textureBytes[$-1]);
-					//readln();
-				}
 			h++;
 		}
-		std.file.write("out_texture.raw", textureBytes);
 	}
 
 	void setupTextures()
 	{
 		texture = new GLTexture2D(openGL);
-		texture.setMinFilter(GL_NEAREST);
-		texture.setMagFilter(GL_NEAREST);
-		texture.setImage(0, GL_R3_G3_B2, 80, 38, 0, GL_RGB, GL_UNSIGNED_BYTE_3_3_2, textureBytes.ptr);
+		texture.setMinFilter(GL_LINEAR);
+		texture.setMagFilter(GL_LINEAR);
+		texture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
 	}
 
 	Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum)
 	{
 		return Vertex(vec3i(peek!short(dataBlob[vertexOffset    ..vertexOffset + 2]),
 							peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
-							peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
+							-peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
 						vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
 							  cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight));
 	}

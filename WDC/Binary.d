@@ -22,6 +22,7 @@ private:
 	uint[RegionType] carAssetsOffset;
 	enum carAssetsStringOffset = 0xc00;
 	enum carAssetsSize = 0x80;
+	enum carPaletteSize = 0x20;
 
 	RegionType region;
 	ubyte[] binary;
@@ -78,9 +79,12 @@ public:
 	{
 		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
 		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
-		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x18..carAssetOffset + 0x1c]);
+		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x1c..carAssetOffset + 0x20]);
+		int paletteOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
 		
-		return new Car(decompressZlibBlock(dataBlobOffset), decompressZlibBlock(textureBlobOffset));
+		return new Car(decompressZlibBlock(dataBlobOffset),
+						decompressZlibBlock(textureBlobOffset),
+						binary[paletteOffset..paletteOffset + carPaletteSize]);
 	}
 
 	void dumpCarData(int index)
