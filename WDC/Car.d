@@ -127,14 +127,34 @@ class Car
 	}
 
 private:
+	// Is this the "correct" way of setting the texture start? Does it fail for any cars?
+	int getTextureStart(ubyte[] data)
+	{
+		int lastInsertedPalette = peek!int(data[0x7c..0x80]);
+		int num = 1;
+		int nextPalette;
+		while (num < 8)
+		{
+			nextPalette = peek!int(data[0x7c + num * 4..0x80 + num * 4]);
+			lastInsertedPalette = lastInsertedPalette > nextPalette ? lastInsertedPalette : nextPalette;
+			num++;
+		}
+		lastInsertedPalette += 0x20;
+		int testValue = peek!int(data[lastInsertedPalette..lastInsertedPalette + 4]);
+		while (testValue != 0)
+		{
+			lastInsertedPalette += 0x20;
+			testValue = peek!int(data[lastInsertedPalette..lastInsertedPalette + 4]);
+		}
+		writefln("Texture start: %x", lastInsertedPalette);
+		return lastInsertedPalette;
+	}
+
 	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
 	{
-		//int textureStart = peek!int(data[0x88..0x8c]) + 0x20;
-		//dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
-		
+		int textureStart = getTextureStart(data);
 		// Here we clip the texture data because uncompress seems to be giving enlarged output sometimes
-		// TODO: this hardcoded offset is not always correct, and neither is the "textureStart" version above
-		dataBlob = replaceSlice(data, data[0x538..0x93b8], textures[0..0x8e80]);
+		dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
 		
 		//std.file.write("datablob", dataBlob);
 		palettes[] = carPalettes[];
