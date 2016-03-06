@@ -127,34 +127,54 @@ class Car
 	}
 
 private:
-	// Is this the "correct" way of setting the texture start? Does it fail for any cars?
-	int getTextureStart(ubyte[] data)
+	void insertTextures(ubyte[] textures)
 	{
-		int lastInsertedPalette = peek!int(data[0x7c..0x80]);
-		int num = 1;
-		int nextPalette;
-		while (num < 8)
+		void insertTexture(int destinationOffset, int sourceOffset, int size)
 		{
-			nextPalette = peek!int(data[0x7c + num * 4..0x80 + num * 4]);
-			lastInsertedPalette = lastInsertedPalette > nextPalette ? lastInsertedPalette : nextPalette;
-			num++;
+			int endOffset = sourceOffset + size;
+			while (sourceOffset < endOffset)
+			{
+				dataBlob[destinationOffset] = textures[sourceOffset];
+				sourceOffset++;
+				destinationOffset++;
+			}
 		}
-		lastInsertedPalette += 0x20;
-		int testValue = peek!int(data[lastInsertedPalette..lastInsertedPalette + 4]);
-		while (testValue != 0)
+		
+		int textureDescriptorTableOffset = peek!int(dataBlob[0xb4..0xb8]); // Is this always here ?
+		int textureCount = peek!int(dataBlob[0xb8..0xbc]);
+		int curTextureNum = 0;
+
+		int textureDescriptorOffset;
+		int textureSize;
+		int textureDestination;
+		int sourcePosition = 0;
+
+		while (curTextureNum < textureCount)
 		{
-			lastInsertedPalette += 0x20;
-			testValue = peek!int(data[lastInsertedPalette..lastInsertedPalette + 4]);
+			textureDescriptorOffset = peek!int(dataBlob[textureDescriptorTableOffset + curTextureNum * 4
+													..
+													textureDescriptorTableOffset + 4 + curTextureNum * 4]);
+			textureDestination = peek!int(dataBlob[textureDescriptorOffset + 4
+												..
+												textureDescriptorOffset + 8]);
+			textureSize = peek!int(dataBlob[textureDescriptorOffset + 0x14
+										..
+										textureDescriptorOffset + 0x18]);
+			textureSize = (((textureSize >> 0xc) & 0xfff) << 1) + 2;
+
+			insertTexture(textureDestination, sourcePosition, textureSize);
+
+			sourcePosition += textureSize;
+			curTextureNum++;
 		}
-		writefln("Texture start: %x", lastInsertedPalette);
-		return lastInsertedPalette;
 	}
 
 	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
 	{
-		int textureStart = getTextureStart(data);
+		dataBlob = data;
+		insertTextures(textures);
 		// Here we clip the texture data because uncompress seems to be giving enlarged output sometimes
-		dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
+		//dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
 		
 		//std.file.write("datablob", dataBlob);
 		palettes[] = carPalettes[];
