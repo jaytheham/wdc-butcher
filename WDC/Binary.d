@@ -23,6 +23,7 @@ private:
 	enum carAssetsStringOffset = 0xc00;
 	enum carAssetsSize = 0x80;
 	enum carPaletteSize = 0x20;
+	enum carInsertedPalettes = 8;
 
 	RegionType region;
 	ubyte[] binary;
@@ -60,10 +61,11 @@ public:
 		char[][] carNames;
 		while(binary[carAssetsOffset[region] + offset] == 0x80)
 		{
-			nameOffset = (binary[carAssetsOffset[region] + offset + 1] << 16) +
-						 (binary[carAssetsOffset[region] + offset + 2] << 8) +
-						 binary[carAssetsOffset[region] + offset + 3] +
-						 carAssetsStringOffset;
+			nameOffset = peek!int(binary[carAssetsOffset[region] + offset
+										 ..
+										 carAssetsOffset[region] + offset + 4])
+						 + carAssetsStringOffset;
+			nameOffset &= 0xfffffff;
 			nameSize = 0;
 			while(binary[nameOffset + nameSize] != 0)
 			{
@@ -80,11 +82,11 @@ public:
 		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
 		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
 		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x1c..carAssetOffset + 0x20]);
-		int paletteOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
+		int palettesOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
 		
 		return new Car(decompressZlibBlock(dataBlobOffset),
 						decompressZlibBlock(textureBlobOffset),
-						binary[paletteOffset..paletteOffset + 8 * carPaletteSize]);
+						binary[palettesOffset..palettesOffset + (carInsertedPalettes * carPaletteSize)]);
 	}
 
 	void dumpCarData(int index)
@@ -128,7 +130,7 @@ public:
 		//int blockOutputSize = peek!int(binary[offset + 4..offset + 8]);
 		int zlibSize = 0;
 		ubyte[] output;
-		writefln("Inflating data from %x", offset);
+		writefln("Inflating zlib block from %x", offset);
 		offset += 0x8;
 
 		do
@@ -136,11 +138,9 @@ public:
 			offset += zlibSize;
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
-			ubyte[] temp = cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
-			write(format("part %.8x", offset), temp);
-			output ~= temp;
+			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
 
-			writefln("%x decompressed", offset);
+			writefln("%x inflated", offset);
 
 			if (zlibSize % 2 == 1) // Next file will be aligned to short
 			{
@@ -202,7 +202,7 @@ private:
 				}
 				break;
 			default:
-				writeln("ROM byte order is unrecognized, assuming Big Endian");
+				writeln("Warning: ROM byte order is unrecognized, assuming Big Endian");
 				break;
 		}
 	}

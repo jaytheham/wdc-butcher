@@ -239,11 +239,11 @@ private auto createShader(OpenGL opengl)
 		#if FRAGMENT_SHADER
 		in vec2 UV;
 		out vec3 color;
-		uniform sampler2D myTextureSampler;
+		uniform sampler2D textureSampler;
 
 		void main()
 		{
-			color = texture( myTextureSampler, UV ).rgb;
+			color = texture( textureSampler, UV ).rgb;
 		}
 		#endif
 	};

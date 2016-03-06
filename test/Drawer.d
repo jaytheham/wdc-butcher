@@ -66,7 +66,7 @@ class Drawer {
 	{
 		tex.use(0);
 		program.uniform("mvpMatrix").set(cam.getPVM(model));
-		program.uniform("myTextureSampler").set(0);
+		program.uniform("textureSampler").set(0);
 		program.use();
 		vao.bind();
 		//glDrawArrays(GL_TRIANGLES, 0, cast(int)(vbo.size() / vs.vertexSize()));

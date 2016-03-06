@@ -20,9 +20,6 @@ class Car
 			vec3i position;
 			vec2f vertexUV;
 		}
-
-		ubyte[] dataBlob;
-		ubyte[0x100] palettes;
 		Vertex[] carVertices;
 		mat4f model;
 		GLProgram program;
@@ -31,11 +28,14 @@ class Car
 		GLBuffer vbo;
 		VertexSpecification!Vertex vs;
 
+		ubyte[] dataBlob;
+
 		int modelBlockIndex = 0;
 		int numModelBlocks = 0;
 
 		int paletteIndex = 0;
-		immutable int numPalettes = 8;
+		int numPalettes = 0;
+		int palettesOffset;
 		immutable int paletteSize = 0x20;
 
 		enum modelBlockPointerOffset = 0xf4;
@@ -67,7 +67,7 @@ class Car
 	void draw(Camera cam)
 	{
 		texture.use(0);
-		program.uniform("myTextureSampler").set(0);
+		program.uniform("textureSampler").set(0);
 		program.uniform("mvpMatrix").set(cam.getPVM(model));
 		program.use();
 		vao.bind();
@@ -169,19 +169,55 @@ private:
 		}
 	}
 
-	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
+	void insertPalettes(ubyte[] palettes)
+	{
+		void insertPalette(int destinationOffset, ubyte[] replacementData)
+		{
+			// TODO, this should do whatever it is the game does that replaces the invisible color
+			int endOffset = destinationOffset + replacementData.length;
+			int i = 0;
+			while (destinationOffset + i < endOffset)
+			{
+				dataBlob[destinationOffset + i] = replacementData[i];
+				i++;
+			}
+		}
+
+		int palettePointerOffset = 0x7c;
+		enum endPalettePointers = 0x9c;
+
+		int paletteOffset;
+		int paletteNum = 0;
+
+		while (palettePointerOffset < endPalettePointers)
+		{
+			paletteOffset = peek!int(dataBlob[palettePointerOffset..palettePointerOffset + 4]);
+			assert(paletteOffset != 0, "This car has less than 8 inserted palettes?");
+
+			insertPalette(paletteOffset, palettes[paletteNum * 4..paletteNum * 4 + 0x20]);
+
+			palettePointerOffset += 4;
+			paletteNum++;
+		}
+
+		palettesOffset = peek!int(dataBlob[0..4]) + 4; // Correct ??
+		while (peek!int(dataBlob[palettesOffset + (paletteSize * numPalettes)
+								..
+								palettesOffset + (paletteSize * numPalettes) + 4]) != 0)
+		{
+			numPalettes++;
+		}
+	}
+
+	void createFromBinary(ubyte[] data, ubyte[] textures, ubyte[] palettes)
 	{
 		dataBlob = data;
+		insertPalettes(palettes);
 		insertTextures(textures);
-		// Here we clip the texture data because uncompress seems to be giving enlarged output sometimes
-		//dataBlob = replaceSlice(data, data[textureStart..textureStart + 0x8e80], textures[0..0x8e80]);
-		
-		//std.file.write("datablob", dataBlob);
-		palettes[] = carPalettes[];
 
-		while (peek!int(dataBlob[modelBlockPointerOffset + numModelBlocks * 0x10
+		while (peek!int(dataBlob[modelBlockPointerOffset + (numModelBlocks * 0x10)
 		                         ..
-		                         modelBlockPointerOffset + 4 + numModelBlocks * 0x10]) > 0)
+		                         modelBlockPointerOffset + (numModelBlocks * 0x10) + 4]) > 0)
 		{
 			numModelBlocks++;
 		}
@@ -249,16 +285,12 @@ private:
 	void loadTexture()
 	{
 		textureBytes.length = 0;
-		// use modelBlockIndex to index into the first lot of texture pointer pointers
+		// use modelBlockIndex to index into the first lot of texture descriptor pointers
 		int textureCmdPointers = peek!int(dataBlob[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
-		writefln("\n#%x @%x", modelBlockIndex, textureCmdPointers);
 		int textureCmdPointer = textureCmdPointers + modelBlockIndex * 4;
-		writefln("b %x", textureCmdPointer);
 		int textureCmdOffset = peek!int(dataBlob[textureCmdPointer..textureCmdPointer + 4]);
-		writefln("c %x", textureCmdOffset);
 
 		int textureOffset = peek!int(dataBlob[textureCmdOffset + 4..textureCmdOffset + 8]);
-		writefln("d %x", textureOffset);
 
 		int maxWidth = textureWidth / 2;
 		int maxHeight = textureHeight;
@@ -271,7 +303,7 @@ private:
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = palettes[paletteIndex * paletteSize..paletteIndex * paletteSize + paletteSize];
+		auto palette = dataBlob[palettesOffset + paletteIndex * paletteSize..palettesOffset + paletteIndex * paletteSize + paletteSize];
 		while (h < maxHeight)
 		{
 			w = 0;
@@ -302,9 +334,9 @@ private:
 	{
 		return Vertex(vec3i(peek!short(dataBlob[vertexOffset    ..vertexOffset + 2]),
 							peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
-							-peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
-						vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
-							  cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight));
+						   -peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
+					  vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
+							cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight));
 	}
 
 	void loadVertices()
