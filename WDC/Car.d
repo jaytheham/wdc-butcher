@@ -324,6 +324,10 @@ private:
 
 	void setupTextures()
 	{
+		if (texture)
+		{
+			delete texture;
+		}
 		texture = new GLTexture2D(openGL);
 		texture.setMinFilter(GL_LINEAR);
 		texture.setMagFilter(GL_LINEAR);
