@@ -31,6 +31,7 @@ private
 
 	OpenGL gl;
 	GLProgram program;
+	GLProgram normalsProgram;
 
 	Car selectedCar;
 }
@@ -63,6 +64,7 @@ void main(string[] args)
 	gl.redirectDebugOutput();
 
 	program = createShader(gl);
+	normalsProgram = createNormalShader(gl);
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
 
@@ -109,6 +111,7 @@ void main(string[] args)
 
 			//test.drawTriangles(basicCamera);
 			selectedCar.draw(basicCamera);
+			selectedCar.drawNormals(basicCamera, normalsProgram);
 
 			window.swapBuffers();
 			Thread.sleep(TimeKeeper.uSecsUntilNextFrame().usecs);
@@ -225,6 +228,7 @@ private auto createShader(OpenGL opengl)
 		#if VERTEX_SHADER
 		in ivec3 position;
 		in vec2 vertexUV;
+		in ivec3 inNormal;
 
 		out vec2 UV;
 
@@ -251,6 +255,70 @@ private auto createShader(OpenGL opengl)
 	return new GLProgram(opengl, tunnelProgramSource);
 }
 
+private auto createNormalShader(OpenGL opengl)
+{
+	// create a shader program made of a single fragment shader
+	string tunnelProgramSource =
+		q{#version 330 core
+
+		#if VERTEX_SHADER
+		in ivec3 position;
+		in vec2 vertexUV;
+		in ivec3 inNormal;
+
+		out ivec3 normalOut;
+
+		void main()
+		{
+			gl_Position = vec4(position, 1.0);
+			normalOut = inNormal;
+		}
+		#endif
+
+		#if GEOMETRY_SHADER
+		layout(triangles) in;
+		layout(line_strip, max_vertices=6) out;
+
+		uniform float normalsLength;
+		uniform mat4 mvpMatrix;
+		
+		in flat ivec3 normalOut[];
+
+		out vec4 vertex_color;
+
+		void main()
+		{
+			for(int i = 0; i < gl_in.length(); i++)
+		    {
+			    vec3 P = gl_in[i].gl_Position.xyz;
+				vec3 N = normalOut[i].xyz;
+
+				gl_Position = mvpMatrix * vec4(P, 1.0);
+				vertex_color = vec4(1,1,0.5,1);
+				EmitVertex();
+
+				gl_Position = mvpMatrix * vec4(P + N * normalsLength, 1.0);
+				vertex_color = vec4(1,0,1,1);
+				EmitVertex();
+
+				EndPrimitive();
+		    }
+		}
+		#endif
+
+		#if FRAGMENT_SHADER
+		in vec4 vertex_color;
+		out vec4 Out_Color;
+		void main()
+		{
+		 	Out_Color = vertex_color;
+		}
+		#endif
+	};
+
+	return new GLProgram(opengl, tunnelProgramSource);
+}
+
 private void listCars()
 {
 	writeln("\nIndex\tCar Name");
@@ -263,7 +331,7 @@ private void listCars()
 private void displayCar(int index)
 {
 	selectedCar = binaryFile.getCar(index);
-	selectedCar.enableDrawing(gl, program);
+	selectedCar.enableDrawing(gl, program, normalsProgram);
 	setWindowVisible(true);
 	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");

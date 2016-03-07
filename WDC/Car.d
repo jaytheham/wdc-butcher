@@ -19,6 +19,7 @@ class Car
 		{
 			vec3i position;
 			vec2f vertexUV;
+			vec3i inNormal;
 		}
 		Vertex[] carVertices;
 		mat4f model;
@@ -27,6 +28,7 @@ class Car
 		GLVAO vao;
 		GLBuffer vbo;
 		VertexSpecification!Vertex vs;
+		VertexSpecification!Vertex vs2;
 
 		ubyte[] dataBlob;
 
@@ -53,13 +55,14 @@ class Car
 		createFromBinary(data, textures, carPalettes);
 	}
 
-	void enableDrawing(OpenGL opengl, GLProgram prgrm)
+	void enableDrawing(OpenGL opengl, GLProgram prgrm, GLProgram prgrm2)
 	{
 		openGL = opengl;
 		program = prgrm;
 		model = mat4f.identity();
 
 		vs = new VertexSpecification!Vertex(program);
+		vs2 = new VertexSpecification!Vertex(prgrm2);
 
 		setupBuffers();
 	}
@@ -71,9 +74,23 @@ class Car
 		program.uniform("mvpMatrix").set(cam.getPVM(model));
 		program.use();
 		vao.bind();
+		vs.use();
 		glDrawArrays(GL_TRIANGLES, 0, carVertices.length);
 		vao.unbind();
 		program.unuse();
+	}
+
+	void drawNormals(Camera cam, GLProgram prgm)
+	{
+		
+		prgm.uniform("normalsLength").set(1.0F);
+		prgm.uniform("mvpMatrix").set(cam.getPVM(model));
+		prgm.use();
+		vao.bind();
+		vs2.use();
+		glDrawArrays(GL_TRIANGLES, 0, carVertices.length);
+		vao.unbind();
+		prgm.unuse();
 	}
 
 	void nextModelBlock()
@@ -334,13 +351,16 @@ private:
 		texture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
 	}
 
-	Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum)
+	Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum, int normalOffset)
 	{
 		return Vertex(vec3i(peek!short(dataBlob[vertexOffset    ..vertexOffset + 2]),
 							peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
 						   -peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
 					  vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
-							cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight));
+							cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
+					  vec3i(cast(int)cast(byte)dataBlob[normalOffset],
+					  		cast(int)cast(byte)dataBlob[normalOffset + 2],
+					  	   -cast(int)cast(byte)dataBlob[normalOffset + 1]));
 	}
 
 	void loadVertices()
@@ -351,10 +371,12 @@ private:
 		//int vertexCount = peek!int(dataBlob[modelBlockOffset + 4 .. modelBlockOffset + 8]);
 		int polygonOffset = peek!int(dataBlob[modelBlockOffset + 8 .. modelBlockOffset + 12]);
 		int polygonCount = peek!int(dataBlob[modelBlockOffset + 12 .. modelBlockOffset + 16]);
+		int normalsOffset = peek!int(dataBlob[modelBlockOffset + 0x20 .. modelBlockOffset + 0x24]);
+		//int normalsCount = peek!int(dataBlob[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
 		
 		carVertices.length = 0;
-		ushort v1, v2, v3, v4;
-		int curVertOffset;
+		ushort v1, v2, v3, v4, n1, n2, n3, n4;
+		int curVertOffset, curNormalOffset;
 
 		while (polygonCount > 0)
 		{
@@ -363,30 +385,44 @@ private:
 			v3 = peek!ushort(dataBlob[polygonOffset + 12 .. polygonOffset + 14]);
 			v4 = peek!ushort(dataBlob[polygonOffset + 14 .. polygonOffset + 16]);
 
+			n1 = peek!ushort(dataBlob[polygonOffset + 0x18 .. polygonOffset + 0x1a]);
+			n2 = peek!ushort(dataBlob[polygonOffset + 0x1a .. polygonOffset + 0x1c]);
+			n3 = peek!ushort(dataBlob[polygonOffset + 0x1c .. polygonOffset + 0x1e]);
+			n4 = peek!ushort(dataBlob[polygonOffset + 0x1e .. polygonOffset + 0x20]);
+
 			if (v4 == 0xffff) // One triangle
 			{
 				curVertOffset = verticesOffset + v1 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0);
+				curNormalOffset = normalsOffset + n1 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v2 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 1);
+				curNormalOffset = normalsOffset + n2 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2);
+				curNormalOffset = normalsOffset + n3 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 			}
 			else // Two Triangles
 			{
 				curVertOffset = verticesOffset + v1 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0);
+				curNormalOffset = normalsOffset + n1 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v2 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 1);
+				curNormalOffset = normalsOffset + n2 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2);
+				curNormalOffset = normalsOffset + n3 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 
 				curVertOffset = verticesOffset + v1 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0);
+				curNormalOffset = normalsOffset + n1 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2);
+				curNormalOffset = normalsOffset + n3 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 				curVertOffset = verticesOffset + v4 * 6;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 3);
+				curNormalOffset = normalsOffset + n4 * 3;
+				carVertices ~= getVertex(curVertOffset, polygonOffset, 3, curNormalOffset);
 			}
 
 			polygonOffset += 0x20;
