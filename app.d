@@ -29,6 +29,9 @@ private
 	SDL2Window window;
 	bool windowVisible = false;
 
+	int mode;
+	bool drawNormals = false;
+
 	OpenGL gl;
 	GLProgram program;
 	GLProgram normalsProgram;
@@ -52,26 +55,12 @@ void main(string[] args)
 	window.setTitle("World Driver Championship Viewer");
 	window.hide();
 
-	// reload OpenGL now that a context exists
-	gl.reload();
-	glPointSize(3.0);
-	glClearColor(0.1, 0.2, 0.4, 1);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	auto mode = GL_LINE;
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	// redirect OpenGL output to our Logger
-	gl.redirectDebugOutput();
+	setOpenGLState();
 
 	program = createShader(gl);
 	normalsProgram = createNormalShader(gl);
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
-
-	//auto test = new Drawer(gl, program);
-	
 
 	while(!sdl2.wasQuitRequested())
 	{
@@ -84,91 +73,26 @@ void main(string[] args)
 				setWindowVisible(false);
 				continue;
 			}
-			basicCamera.update(sdl2, TimeKeeper.getDeltaTime());
-			
+
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			if (sdl2.keyboard.testAndRelease(SDLK_n))
-			{
-				selectedCar.prevModelBlock();
-			}
-			if (sdl2.keyboard.testAndRelease(SDLK_m))
-			{
-				selectedCar.nextModelBlock();
-			}
-			if (sdl2.keyboard.testAndRelease(SDLK_j))
-			{
-				selectedCar.prevPalette();
-			}
-			if (sdl2.keyboard.testAndRelease(SDLK_k))
-			{
-				selectedCar.nextPalette();
-			}
+			basicCamera.update(sdl2, TimeKeeper.getDeltaTime());
 
-			if (sdl2.keyboard.testAndRelease(SDLK_p))
-			{
-				mode = mode == GL_FILL ? GL_LINE : GL_FILL;
-				glPolygonMode(GL_FRONT_AND_BACK, mode);
-			}
+			handleInput(sdl2);
 
 			//test.drawTriangles(basicCamera);
 			selectedCar.draw(basicCamera);
-			selectedCar.drawNormals(basicCamera, normalsProgram);
+			if (drawNormals)
+			{
+				selectedCar.drawNormals(basicCamera, normalsProgram);
+			}
 
 			window.swapBuffers();
 			Thread.sleep(TimeKeeper.uSecsUntilNextFrame().usecs);
 		}
 		else
 		{
-			write("\nWaiting for input: ");
-			string[] commands = readln().removechars("{}").split();
-			if (commands.length > 0)
-			{
-				writeln(); 
-				switch (commands[0])
-				{
-					case "-d":
-						if (commands.length >= 2)
-						{
-							binaryFile.dumpCarData(parse!int(commands[1]));
-						}
-						else
-						{
-							writeln("You didn't specify an offset");
-						}
-						break;
-					case "-dc":
-					case "--display-car":
-						if (commands.length >= 2)
-						{
-							displayCar(parse!int(commands[1]));
-						}
-						else
-						{
-							writeln("You didn't specify a car index");
-						}
-						break;
-					
-					case "-h":
-					case "--help":
-						writeHelp();
-						break;
-
-					case "-lc":
-					case "--list-cars":
-						listCars();
-						break;
-
-					case "-v":
-					case "--version":
-						writeln(releaseVersion);
-						break;
-
-					default:
-						writeln("Unrecognised command, type -h or --help for a list of available commands");
-						break;
-				}
-			}
+			handleCommands();
 		}
 	}
 }
@@ -204,6 +128,94 @@ private auto createSDLWindow(SDL2 sdl2)
 								width, height, SDL_WINDOW_OPENGL);
 }
 
+private void handleCommands()
+{
+	write("\nWaiting for input: ");
+	string[] commands = readln().removechars("{}").split();
+	if (commands.length > 0)
+	{
+		writeln(); 
+		switch (commands[0])
+		{
+			case "ec":
+				if (commands.length >= 2)
+				{
+					binaryFile.dumpCarData(parse!int(commands[1]));
+				}
+				else
+				{
+					writeln("You didn't specify an offset");
+				}
+				break;
+			case "dc":
+			case "display-car":
+				if (commands.length >= 2)
+				{
+					displayCar(parse!int(commands[1]));
+				}
+				else
+				{
+					writeln("You didn't specify a car index");
+				}
+				break;
+			
+			case "-h":
+			case "--help":
+			case "help":
+				writeHelp();
+				break;
+
+			case "lc":
+			case "list-cars":
+				listCars();
+				break;
+
+			case "v":
+			case "version":
+				writeln(releaseVersion);
+				break;
+
+			default:
+				writeln("Unrecognised command, type -h or --help for a list of available commands");
+				break;
+		}
+	}
+}
+
+private void handleInput(SDL2 sdl2)
+{
+	if (sdl2.keyboard.testAndRelease(SDLK_COMMA))
+	{
+		selectedCar.prevModelBlock();
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_PERIOD))
+	{
+		selectedCar.nextModelBlock();
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_SEMICOLON))
+	{
+		selectedCar.prevPalette();
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_QUOTE))
+	{
+		selectedCar.nextPalette();
+	}
+
+	if (sdl2.keyboard.testAndRelease(SDLK_p))
+	{
+		mode = mode == GL_FILL ? GL_LINE : GL_FILL;
+		glPolygonMode(GL_FRONT_AND_BACK, mode);
+	}
+
+	if (sdl2.keyboard.isPressed(SDLK_o))
+	{
+		drawNormals = true;
+	} else
+	{
+		drawNormals = false;
+	}
+}
+
 private void setWindowVisible(bool isVisible)
 {
 	if (isVisible)
@@ -221,16 +233,32 @@ private void setWindowVisible(bool isVisible)
 	}
 }
 
+private void setOpenGLState()
+{
+	// reload OpenGL now that a context exists
+	gl.reload();
+	mode = GL_LINE;
+	glPointSize(3.0);
+	glClearColor(0.1, 0.2, 0.4, 1);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	// redirect OpenGL output to our Logger
+	gl.redirectDebugOutput();
+}
+
 private auto createShader(OpenGL opengl)
 {
-	// create a shader program made of a single fragment shader
 	string tunnelProgramSource =
 		q{#version 330 core
 
 		#if VERTEX_SHADER
 		in ivec3 position;
 		in vec2 vertexUV;
-		in ivec3 inNormal;
 
 		out vec2 UV;
 
@@ -259,7 +287,6 @@ private auto createShader(OpenGL opengl)
 
 private auto createNormalShader(OpenGL opengl)
 {
-	// create a shader program made of a single fragment shader
 	string tunnelProgramSource =
 		q{#version 330 core
 
@@ -341,9 +368,9 @@ private void displayCar(int index)
 private void writeHelp()
 {
 	writeln("\nAvailable commands:");
-	writeln("\t-dc {0}\t--display-car {0}\tDisplay car {0}");
+	writeln("\tdc {0}\tdisplay-car {0}\tDisplay car {0}");
 	writeln("\t-h\t--help\t\t\tList commands");
-	writeln("\t-lc\t--list-cars\t\tList cars in ROM");
-	writeln("\t-v\t--version\t\tShow program version");
+	writeln("\tlc\tlist-cars\t\tList cars in ROM");
+	writeln("\tv\tversion\t\tShow program version");
 	writeln();
 }
