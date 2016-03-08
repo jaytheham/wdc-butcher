@@ -82,8 +82,6 @@ class Car
 
 	void drawNormals(Camera cam, GLProgram prgm)
 	{
-		
-		prgm.uniform("normalsLength").set(1.0F);
 		prgm.uniform("mvpMatrix").set(cam.getPVM(model));
 		prgm.use();
 		vao.bind();
@@ -321,6 +319,9 @@ private:
 		int w = 0, h = 0;
 		ubyte index;
 		auto palette = dataBlob[palettesOffset + paletteIndex * paletteSize..palettesOffset + paletteIndex * paletteSize + paletteSize];
+		// TODO remove this once the todo in insertPalettes is done
+		palette[0] = 0;
+		palette[1] = 0;
 		while (h < maxHeight)
 		{
 			w = 0;
@@ -348,6 +349,8 @@ private:
 		texture = new GLTexture2D(openGL);
 		texture.setMinFilter(GL_LINEAR);
 		texture.setMagFilter(GL_LINEAR);
+		texture.setWrapS(GL_CLAMP_TO_EDGE);
+		texture.setWrapT(GL_CLAMP_TO_EDGE);
 		texture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
 	}
 

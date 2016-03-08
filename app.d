@@ -60,6 +60,8 @@ void main(string[] args)
 	glDepthFunc(GL_LESS);
 	auto mode = GL_LINE;
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// redirect OpenGL output to our Logger
 	gl.redirectDebugOutput();
 
@@ -242,12 +244,12 @@ private auto createShader(OpenGL opengl)
 
 		#if FRAGMENT_SHADER
 		in vec2 UV;
-		out vec3 color;
+		out vec4 color;
 		uniform sampler2D textureSampler;
 
 		void main()
 		{
-			color = texture( textureSampler, UV ).rgb;
+			color = texture( textureSampler, UV ).rgba;
 		}
 		#endif
 	};
@@ -279,7 +281,6 @@ private auto createNormalShader(OpenGL opengl)
 		layout(triangles) in;
 		layout(line_strip, max_vertices=6) out;
 
-		uniform float normalsLength;
 		uniform mat4 mvpMatrix;
 		
 		in flat ivec3 normalOut[];
@@ -297,7 +298,7 @@ private auto createNormalShader(OpenGL opengl)
 				vertex_color = vec4(1,1,0.5,1);
 				EmitVertex();
 
-				gl_Position = mvpMatrix * vec4(P + N * normalsLength, 1.0);
+				gl_Position = mvpMatrix * vec4(P + N * 0.2, 1.0);
 				vertex_color = vec4(1,0,1,1);
 				EmitVertex();
 
