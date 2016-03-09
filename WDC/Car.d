@@ -21,18 +21,18 @@ class Car
 			vec2f vertexUV;
 			vec3i inNormal;
 		}
-		Vertex[] carVertices;
+		Vertex[] partVertices;
 		mat4f model;
 		GLProgram program;
 		OpenGL openGL;
-		GLVAO vao;
-		GLBuffer vbo;
+		GLVAO partVAO;
+		GLBuffer partVBO;
 		VertexSpecification!Vertex vs;
 		VertexSpecification!Vertex vs2;
 
 		ubyte[] dataBlob;
 
-		int modelBlockIndex = 0;
+		int modelBlockIndex;
 		int numModelBlocks = 0;
 
 		int paletteIndex = 0;
@@ -46,8 +46,15 @@ class Car
 
 		int textureWidth = 80;
 		int textureHeight = 38;
-		GLTexture2D texture;
-		ubyte[] textureBytes;
+		GLTexture2D partTexture;
+		ubyte[] partTextureBytes;
+
+		enum numCarParts = 26;
+		ubyte[][numCarParts] carTextureBytes;
+		GLTexture2D[numCarParts] carTextures;
+		GLVAO[numCarParts] carVAOs;
+		GLBuffer[numCarParts] carVBOs;
+		Vertex[][numCarParts] carVertices;
 	}
 
 	this(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
@@ -65,29 +72,49 @@ class Car
 		vs2 = new VertexSpecification!Vertex(prgrm2);
 
 		setupBuffers();
+		setModelBlock(-1);
 	}
 
 	void draw(Camera cam)
 	{
-		texture.use(0);
-		program.uniform("textureSampler").set(0);
-		program.uniform("mvpMatrix").set(cam.getPVM(model));
-		program.use();
-		vao.bind();
-		vs.use();
-		glDrawArrays(GL_TRIANGLES, 0, carVertices.length);
-		vao.unbind();
-		program.unuse();
+		if (modelBlockIndex == -1)
+		{
+			program.uniform("textureSampler").set(0);
+			program.uniform("mvpMatrix").set(cam.getPVM(model));
+			for (int i = 0; i < numCarParts; i++)
+			{
+				carTextures[i].use(0);
+				program.use();
+				carVAOs[i].bind();
+				carVBOs[i].bind();
+				vs.use();
+				glDrawArrays(GL_TRIANGLES, 0, carVertices[i].length);
+				carVAOs[i].unbind();
+				program.unuse();
+			}
+		}
+		else
+		{
+			partTexture.use(0);
+			program.uniform("textureSampler").set(0);
+			program.uniform("mvpMatrix").set(cam.getPVM(model));
+			program.use();
+			partVAO.bind();
+			vs.use();
+			glDrawArrays(GL_TRIANGLES, 0, partVertices.length);
+			partVAO.unbind();
+			program.unuse();
+		}
 	}
 
 	void drawNormals(Camera cam, GLProgram prgm)
 	{
 		prgm.uniform("mvpMatrix").set(cam.getPVM(model));
 		prgm.use();
-		vao.bind();
+		partVAO.bind();
 		vs2.use();
-		glDrawArrays(GL_TRIANGLES, 0, carVertices.length);
-		vao.unbind();
+		glDrawArrays(GL_TRIANGLES, 0, partVertices.length);
+		partVAO.unbind();
 		prgm.unuse();
 	}
 
@@ -101,19 +128,26 @@ class Car
 		setModelBlock(modelBlockIndex - 1);
 	}
 
-	void setModelBlock(int blockNum)
+	void setModelBlock(int newblockNum)
 	{
-		modelBlockIndex = blockNum;
-		if (modelBlockIndex < 0)
+		if (newblockNum < -1)
 		{
 			modelBlockIndex = numModelBlocks - 1;
 		}
-		else if (modelBlockIndex >= numModelBlocks)
+		else if (newblockNum >= numModelBlocks)
 		{
-			modelBlockIndex = 0;
+			modelBlockIndex = -1;
 		}
-		loadModelData();
-		updateBuffers();
+		else
+		{
+			modelBlockIndex = newblockNum;
+		}
+
+		if (modelBlockIndex != -1)
+		{
+			loadModelData();
+			updateBuffers();
+		}
 	}
 
 	void nextPalette()
@@ -137,8 +171,9 @@ class Car
 		{
 			paletteIndex = 0;
 		}
-		loadTexture();
-		setupTextures();
+		writefln("p%x", paletteIndex);
+		loadTexture(partTextureBytes, modelBlockIndex);
+		setupTextures(partTexture, partTextureBytes);
 	}
 
 private:
@@ -189,6 +224,8 @@ private:
 		void insertPalette(int destinationOffset, ubyte[] replacementData)
 		{
 			// TODO, this should do whatever it is the game does that replaces the invisible color
+			replacementData[0..2] = [0,0];
+			// rather than guessing like that
 			int endOffset = destinationOffset + replacementData.length;
 			int i = 0;
 			while (destinationOffset + i < endOffset)
@@ -209,7 +246,7 @@ private:
 			paletteOffset = peek!int(dataBlob[palettePointerOffset..palettePointerOffset + 4]);
 			assert(paletteOffset != 0, "This car has less than 8 inserted palettes?");
 
-			insertPalette(paletteOffset, palettes[paletteNum * 4..paletteNum * 4 + 0x20]);
+			insertPalette(paletteOffset, palettes[paletteNum * 0x20..(paletteNum * 0x20) + 0x20]);
 
 			palettePointerOffset += 4;
 			paletteNum++;
@@ -236,32 +273,42 @@ private:
 		{
 			numModelBlocks++;
 		}
-		
-		loadModelData();
 	}
 
 	void updateBuffers()
 	{
-		vbo.setData(carVertices[]);
-		setupTextures();
+		partVBO.setData(partVertices[]);
+		setupTextures(partTexture, partTextureBytes);
 	}
 
 	void setupBuffers()
 	{
-		vao = new GLVAO(openGL);
-		vao.bind();
-		vbo = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, carVertices[]);
-		vs.use();
-		vao.unbind();
-		setupTextures();
+		partVAO = new GLVAO(openGL);
+		partVAO.bind();
+		partVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, partVertices[]);
+		partVAO.unbind();
+		setupTextures(partTexture, partTextureBytes);
+
+		for (int i = 0; i < numCarParts; i++)
+		{
+			// load car verts
+			loadVertices(carVertices[i], i);
+			// load car textures
+			loadTexture(carTextureBytes[i], i);
+			carVAOs[i] = new GLVAO(openGL);
+			carVAOs[i].bind();
+			carVBOs[i] = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, carVertices[i][]);
+			carVAOs[i].unbind();
+			setupTextures(carTextures[i], carTextureBytes[i]);
+		}
 	}
 
 	void loadModelData()
 	{
-		loadVertices();
-		loadTexture();
+		loadVertices(partVertices, modelBlockIndex);
+		loadTexture(partTextureBytes, modelBlockIndex);
 
-		if (carVertices.length < 3)
+		if (partVertices.length < 3)
 		{
 			writeln("NOTE: Too few vertices defined to draw anything");
 		}
@@ -297,12 +344,22 @@ private:
 		}
 	}
 
-	void loadTexture()
+	void loadTexture(ref ubyte[] texBytes, int modelIndex)
 	{
-		textureBytes.length = 0;
+		texBytes.length = 0;
+		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
+		int modelBlockOffset = peek!int(dataBlob[pointerOffset..pointerOffset + 4]);
+		int polygonOffset = peek!int(dataBlob[modelBlockOffset + 8 .. modelBlockOffset + 12]);
+		int polygonCount = peek!int(dataBlob[modelBlockOffset + 12 .. modelBlockOffset + 16]);
+		if (polygonCount <= 0)
+		{
+			return;
+		}
+		int textureNum = dataBlob[polygonOffset + 4];
+		writeln(textureNum);
 		// use modelBlockIndex to index into the first lot of texture descriptor pointers
 		int textureCmdPointers = peek!int(dataBlob[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
-		int textureCmdPointer = textureCmdPointers + modelBlockIndex * 4;
+		int textureCmdPointer = textureCmdPointers + textureNum * 4;
 		int textureCmdOffset = peek!int(dataBlob[textureCmdPointer..textureCmdPointer + 4]);
 
 		int textureOffset = peek!int(dataBlob[textureCmdOffset + 4..textureCmdOffset + 8]);
@@ -318,40 +375,39 @@ private:
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = dataBlob[palettesOffset + paletteIndex * paletteSize..palettesOffset + paletteIndex * paletteSize + paletteSize];
-		// TODO remove this once the todo in insertPalettes is done
-		palette[0] = 0;
-		palette[1] = 0;
+		auto palette = dataBlob[palettesOffset + paletteIndex * paletteSize
+								..
+								palettesOffset + paletteIndex * paletteSize + paletteSize];
 		while (h < maxHeight)
 		{
 			w = 0;
 			while (w < maxWidth)
 			{
 				index = ((textureIndices[ w + (h * maxWidth)] & 0xf0) >> 3) ;
-				textureBytes ~= palette[index + 1];
-				textureBytes ~= palette[index];
+				texBytes ~= palette[index + 1];
+				texBytes ~= palette[index];
 				
 				index = (textureIndices[w + (h * maxWidth)] & 0x0f) * 2;
-				textureBytes ~= palette[index + 1];
-				textureBytes ~= palette[index];
+				texBytes ~= palette[index + 1];
+				texBytes ~= palette[index];
 				w++;
 			}
 			h++;
 		}
 	}
 
-	void setupTextures()
+	void setupTextures(ref GLTexture2D curTexture, ref ubyte[] textureBytes)
 	{
-		if (texture)
-		{
-			delete texture;
-		}
-		texture = new GLTexture2D(openGL);
-		texture.setMinFilter(GL_LINEAR);
-		texture.setMagFilter(GL_LINEAR);
-		texture.setWrapS(GL_CLAMP_TO_EDGE);
-		texture.setWrapT(GL_CLAMP_TO_EDGE);
-		texture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
+		//if (curTexture)
+		//{
+		//	delete curTexture;
+		//}
+		curTexture = new GLTexture2D(openGL);
+		curTexture.setMinFilter(GL_LINEAR);
+		curTexture.setMagFilter(GL_LINEAR);
+		curTexture.setWrapS(GL_CLAMP_TO_EDGE);
+		curTexture.setWrapT(GL_CLAMP_TO_EDGE);
+		curTexture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
 	}
 
 	Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum, int normalOffset)
@@ -366,9 +422,9 @@ private:
 					  	   -cast(int)cast(byte)dataBlob[normalOffset + 1]));
 	}
 
-	void loadVertices()
+	void loadVertices(ref Vertex[] vertices, int modelIndex)
 	{
-		int pointerOffset = modelBlockPointerOffset + modelBlockIndex * 0x10;
+		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
 		int modelBlockOffset = peek!int(dataBlob[pointerOffset..pointerOffset + 4]);
 		int verticesOffset = peek!int(dataBlob[modelBlockOffset + 0 .. modelBlockOffset + 4]);
 		//int vertexCount = peek!int(dataBlob[modelBlockOffset + 4 .. modelBlockOffset + 8]);
@@ -377,7 +433,7 @@ private:
 		int normalsOffset = peek!int(dataBlob[modelBlockOffset + 0x20 .. modelBlockOffset + 0x24]);
 		//int normalsCount = peek!int(dataBlob[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
 		
-		carVertices.length = 0;
+		vertices.length = 0;
 		ushort v1, v2, v3, v4, n1, n2, n3, n4;
 		int curVertOffset, curNormalOffset;
 
@@ -397,35 +453,35 @@ private:
 			{
 				curVertOffset = verticesOffset + v1 * 6;
 				curNormalOffset = normalsOffset + n1 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v2 * 6;
 				curNormalOffset = normalsOffset + n2 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
 				curNormalOffset = normalsOffset + n3 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 			}
 			else // Two Triangles
 			{
 				curVertOffset = verticesOffset + v1 * 6;
 				curNormalOffset = normalsOffset + n1 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v2 * 6;
 				curNormalOffset = normalsOffset + n2 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
 				curNormalOffset = normalsOffset + n3 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 
 				curVertOffset = verticesOffset + v1 * 6;
 				curNormalOffset = normalsOffset + n1 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
 				curVertOffset = verticesOffset + v3 * 6;
 				curNormalOffset = normalsOffset + n3 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 				curVertOffset = verticesOffset + v4 * 6;
 				curNormalOffset = normalsOffset + n4 * 3;
-				carVertices ~= getVertex(curVertOffset, polygonOffset, 3, curNormalOffset);
+				vertices ~= getVertex(curVertOffset, polygonOffset, 3, curNormalOffset);
 			}
 
 			polygonOffset += 0x20;
