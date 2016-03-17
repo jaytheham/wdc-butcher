@@ -18,12 +18,15 @@ class Binary
 private:
 	
 	enum RegionType { PAL, NTSC };
+	enum assetsStringOffset = 0xc00;
 
 	uint[RegionType] carAssetsOffset;
-	enum carAssetsStringOffset = 0xc00;
 	enum carAssetsSize = 0x80;
 	enum carPaletteSize = 0x20;
 	enum carInsertedPalettes = 8;
+
+	uint[RegionType] trackAssetsOffset;
+	enum trackAssetsSize = 0x44;
 
 	RegionType region;
 	ubyte[] binary;
@@ -31,6 +34,7 @@ private:
 	pure void setupArrays()
 	{
 		carAssetsOffset = [ RegionType.PAL : 0x83620, RegionType.NTSC : 0x81c30];
+		trackAssetsOffset = [ RegionType.PAL : 0x92f40, RegionType.NTSC : 0x91550];
 	}
 
 public:
@@ -64,7 +68,7 @@ public:
 			nameOffset = peek!int(binary[carAssetsOffset[region] + offset
 										 ..
 										 carAssetsOffset[region] + offset + 4])
-						 + carAssetsStringOffset;
+						 + assetsStringOffset;
 			nameOffset &= 0xfffffff;
 			nameSize = 0;
 			while(binary[nameOffset + nameSize] != 0)
@@ -87,6 +91,47 @@ public:
 		return new Car(decompressZlibBlock(dataBlobOffset),
 						decompressZlibBlock(textureBlobOffset),
 						binary[palettesOffset..palettesOffset + (carInsertedPalettes * carPaletteSize)]);
+	}
+
+	char[][] getTrackList()
+	{
+		int offset = 0;
+		int nameSize;
+		uint nameOffset;
+		char[][] trackNames;
+		while(binary[trackAssetsOffset[region] + offset] == 0x80)
+		{
+			nameOffset = peek!int(binary[trackAssetsOffset[region] + offset
+										 ..
+										 trackAssetsOffset[region] + offset + 4])
+						 + assetsStringOffset;
+			nameOffset &= 0xfffffff;
+			nameSize = 0;
+			while(binary[nameOffset + nameSize] != 0)
+			{
+				nameSize++;
+			}
+			trackNames ~= cast(char[])binary[nameOffset..(nameOffset + nameSize)];
+			offset += trackAssetsSize;
+		}
+		return trackNames;
+	}
+
+	Track getTrack()
+	{
+		// get first zlib from tracks table
+		// Load data using offsets in first zlib:
+		// 0x20
+		// 0x34 (track sections? Aligned to next 0x10)
+		// 0x4c
+		// 0x68 -
+		// 0x80  \ These four are handled by the same function
+		// 0x98  /
+		// 0xb0 -
+		// 0xc8
+		// 0xdc Doesn't use destination address
+		// 0xe8
+
 	}
 
 	void dumpCarData(int index)
@@ -123,8 +168,30 @@ public:
 		chdir(workingDir);
 	}
 
+	void dumpTrackData(int index)
+	{
+		string workingDir = getcwd();
+		string outputDir = workingDir ~ "\\output";
+		if (!exists(outputDir))
+		{
+			mkdir(outputDir);
+		}
+		chdir(outputDir);
+
+		int trackAssetOffset = trackAssetsOffset[region] + trackAssetsSize * index;
+		int offset;
+
+		offset = peek!int(binary[trackAssetOffset + 0x14..trackAssetOffset + 0x14 + 4]);
+
+		auto output = decompressZlibBlock(offset);
+		write(format("Track_%.2d_%.8x", index, offset), output);
+
+		chdir(workingDir);
+	}
+
 	ubyte[] decompressZlibBlock(int offset)
 	{
+		assert(offset % 2 == 0, "Zlibs are aligned to the nearest halfword, this offset is not");
 		int blockSize = peek!int(binary[offset..offset + 4]);
 		int blockEnd = offset + blockSize;
 		//int blockOutputSize = peek!int(binary[offset + 4..offset + 8]);
@@ -150,7 +217,6 @@ public:
 
 		return output;
 	}
-	// getTrackList
 	// getTrack
 	// replaceCar
 	// replaceTrack

@@ -405,6 +405,7 @@ private:
 		curTexture = new GLTexture2D(openGL);
 		curTexture.setMinFilter(GL_LINEAR);
 		curTexture.setMagFilter(GL_LINEAR);
+		// 3D wheel models want to use GL_MIRRORED_REPEAT
 		curTexture.setWrapS(GL_CLAMP_TO_EDGE);
 		curTexture.setWrapT(GL_CLAMP_TO_EDGE);
 		curTexture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);

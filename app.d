@@ -1,6 +1,7 @@
 import std.math,
 	std.conv,
 	std.stdio,
+	std.file,
 	std.string,
 	std.random,
 	std.format,
@@ -130,23 +131,13 @@ private auto createSDLWindow(SDL2 sdl2)
 
 private void handleCommands()
 {
-	write("\nWaiting for input: ");
+	std.stdio.write("\nWaiting for input: ");
 	string[] commands = readln().removechars("{}").split();
 	if (commands.length > 0)
 	{
 		writeln(); 
 		switch (commands[0])
 		{
-			case "ec":
-				if (commands.length >= 2)
-				{
-					binaryFile.dumpCarData(parse!int(commands[1]));
-				}
-				else
-				{
-					writeln("You didn't specify an offset");
-				}
-				break;
 			case "dc":
 			case "display-car":
 				if (commands.length >= 2)
@@ -156,6 +147,17 @@ private void handleCommands()
 				else
 				{
 					writeln("You didn't specify a car index");
+				}
+				break;
+			case "d":
+				if (commands.length >= 2)
+				{
+					int ofst = parse!int(commands[1]);
+					std.file.write(format("dumpedFile_%.8x", ofst), binaryFile.decompressZlibBlock(ofst));
+				}
+				else
+				{
+					writeln("You didn't specify an offset");
 				}
 				break;
 			
@@ -168,6 +170,33 @@ private void handleCommands()
 			case "lc":
 			case "list-cars":
 				listCars();
+				break;
+
+			case "lt":
+			case "list-trackss":
+				listTracks();
+				break;
+
+			case "ec":
+				if (commands.length >= 2)
+				{
+					binaryFile.dumpCarData(parse!int(commands[1]));
+				}
+				else
+				{
+					writeln("You didn't specify a car index");
+				}
+				break;
+
+			case "et":
+				if (commands.length >= 2)
+				{
+					binaryFile.dumpTrackData(parse!int(commands[1]));
+				}
+				else
+				{
+					writeln("You didn't specify a car index");
+				}
 				break;
 
 			case "v":
@@ -363,6 +392,15 @@ private void displayCar(int index)
 	setWindowVisible(true);
 	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");
+}
+
+private void listTracks()
+{
+	writeln("\nIndex\tTrack Name");
+	writeln("-----\t--------\n");
+	foreach(index, trackName; binaryFile.getTrackList()){
+		writefln("%d\t%s", index, trackName);
+	}
 }
 
 private void writeHelp()
