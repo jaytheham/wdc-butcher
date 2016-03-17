@@ -15,6 +15,8 @@ import std.math,
 	gfm.opengl,
 
 	wdc.car,
+	wdc.track,
+	// Inplement a drawable interface so app doesn't need to know about these ?
 	wdc.binary,
 
 	camera,
@@ -38,6 +40,7 @@ private
 	GLProgram normalsProgram;
 
 	Car selectedCar;
+	Track selectedTrack;
 }
 
 void main(string[] args)
@@ -146,7 +149,18 @@ private void handleCommands()
 				}
 				else
 				{
-					writeln("You didn't specify a car index");
+					writeln("Usage: dc intCarIndex");
+				}
+				break;
+			case "dt":
+			case "display-track":
+				if (commands.length >= 3)
+				{
+					displayTrack(parse!int(commands[1]), parse!int(commands[2]));
+				}
+				else
+				{
+					writeln("Usage: dt intTrackIndex intTrackVariation");
 				}
 				break;
 			case "d":
@@ -401,6 +415,15 @@ private void listTracks()
 	foreach(index, trackName; binaryFile.getTrackList()){
 		writefln("%d\t%s", index, trackName);
 	}
+}
+
+private void displayTrack(int index, int variation)
+{
+	selectedTrack = binaryFile.getTrack(index, variation);
+	//selectedTrack.enableDrawing(gl, program, normalsProgram);
+	//setWindowVisible(true);
+	//writefln("\nDisplaying car #%d", index);
+	//writeln("Press Escape to return to command window");
 }
 
 private void writeHelp()

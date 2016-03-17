@@ -14,7 +14,7 @@ class Track
 
 private:
 
-	createFromBinary(ubyte[] data)
+	void createFromBinary(ubyte[] data)
 	{
 		dataBlob = data;
 	}

@@ -6,11 +6,14 @@ import std.conv,
 	   std.format,
 	   std.bitmanip,
 	   std.typecons,
-	   std.stdio: File, writeln, writefln;
+	   std.exception: enforce;
+import std.stdio: File, writeln, writefln;
 
 import gfm.opengl;
 
-import wdc.car;
+import wdc.car,
+	   wdc.track,
+	   wdc.tools;
 
 class Binary
 {
@@ -117,13 +120,82 @@ public:
 		return trackNames;
 	}
 
-	Track getTrack()
+	Track getTrack(int trackIndex, int trackVariation)
 	{
 		// get first zlib from tracks table
-		// Load data using offsets in first zlib:
-		// 0x20
-		// 0x34 (track sections? Aligned to next 0x10)
-		// 0x4c
+		int trackAsset = trackAssetsOffset[region] + (trackAssetsSize * trackIndex);
+		int zlibOffset = readInt(binary, trackAsset + 0x14);
+		int firstZlibEnd = readInt(binary, zlibOffset) + zlibOffset;
+
+		ubyte[] data = decompressZlibBlock(zlibOffset);
+		// Load variation data using offsets in first zlib:
+		// 0x20 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		// 0x24 Count of words at above
+		int indicesDescriptorOffsets = readInt(data, 0x28);
+		int indicesDescriptorOffsetsCount = readInt(data, 0x2c);
+		int zlibOffsetTable = readInt(data, 0x30);
+
+		enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		int indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		int indicesCount = readInt(data, indicesDescriptorLocation);
+		int indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		short zlibIndex;
+		for (int i = 0; i < indicesCount; i++)
+		{
+			zlibIndex = readShort(data, indicesLocation + (i * 2));
+			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		}
+		
+		// (track sections?)
+		// 0x34 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		// 0x38 Count of words at above
+		indicesDescriptorOffsets = readInt(data, 0x3c);
+		indicesDescriptorOffsetsCount = readInt(data, 0x40);
+		zlibOffsetTable = readInt(data, 0x44);
+
+		enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		indicesCount = readInt(data, indicesDescriptorLocation);
+		indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		for (int i = 0; i < indicesCount; i++)
+		{
+			if (data.length % 0x10 != 0) // These data chunks must be aligned to 0x10
+			{
+				data.length += 0x10 - (data.length % 0x10);
+			}
+			zlibIndex = readShort(data, indicesLocation + (i * 2));
+			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		}
+
+		// 0x4c Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		// 0x50 Count of words at above
+		indicesDescriptorOffsets = readInt(data, 0x54);
+		indicesDescriptorOffsetsCount = readInt(data, 0x58);
+		// 0x5c null?
+		assert(readInt(data, 0x5c) == 0, "5c can be something other than 0!");
+		// 0x60 null?
+		assert(readInt(data, 0x60) == 0, "60 can be something other than 0!");
+		zlibOffsetTable = readInt(data, 0x64);
+
+		enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		indicesCount = readInt(data, indicesDescriptorLocation);
+		indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		for (int i = 0; i < indicesCount; i++)
+		{
+			zlibIndex = readShort(data, indicesLocation + (i * 2));
+			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		}
+		// Correct Output to here
 		// 0x68 -
 		// 0x80  \ These four are handled by the same function
 		// 0x98  /
@@ -132,6 +204,9 @@ public:
 		// 0xdc Doesn't use destination address
 		// 0xe8
 
+		write("myTrackData", data);
+
+		return new Track(data);
 	}
 
 	void dumpCarData(int index)
