@@ -1,6 +1,10 @@
 module wdc.track;
 
-class Track
+import camera,
+	   gfm.opengl,
+	   wdc.drawable;
+
+class Track : Drawable
 {
 	private
 	{
@@ -10,6 +14,16 @@ class Track
 	this(ubyte[] data)
 	{
 		createFromBinary(data);
+	}
+
+	void enableDrawing(OpenGL openglInstance, GLProgram programInstance)
+	{
+
+	}
+
+	void draw(Camera cam)
+	{
+
 	}
 
 private:

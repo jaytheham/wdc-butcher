@@ -16,7 +16,7 @@ import std.math,
 
 	wdc.car,
 	wdc.track,
-	// Inplement a drawable interface so app doesn't need to know about these ?
+	wdc.drawable,
 	wdc.binary,
 
 	camera,
@@ -33,14 +33,11 @@ private
 	bool windowVisible = false;
 
 	int mode;
-	bool drawNormals = false;
 
 	OpenGL gl;
 	GLProgram program;
-	GLProgram normalsProgram;
 
-	Car selectedCar;
-	Track selectedTrack;
+	Drawable selectedObject;
 }
 
 void main(string[] args)
@@ -62,7 +59,6 @@ void main(string[] args)
 	setOpenGLState();
 
 	program = createShader(gl);
-	normalsProgram = createNormalShader(gl);
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
 
@@ -85,11 +81,7 @@ void main(string[] args)
 			handleInput(sdl2);
 
 			//test.drawTriangles(basicCamera);
-			selectedCar.draw(basicCamera);
-			if (drawNormals)
-			{
-				selectedCar.drawNormals(basicCamera, normalsProgram);
-			}
+			selectedObject.draw(basicCamera);
 
 			window.swapBuffers();
 			Thread.sleep(TimeKeeper.uSecsUntilNextFrame().usecs);
@@ -227,35 +219,30 @@ private void handleCommands()
 
 private void handleInput(SDL2 sdl2)
 {
-	if (sdl2.keyboard.testAndRelease(SDLK_COMMA))
+	if (cast(Car)selectedObject)
 	{
-		selectedCar.prevModelBlock();
-	}
-	if (sdl2.keyboard.testAndRelease(SDLK_PERIOD))
-	{
-		selectedCar.nextModelBlock();
-	}
-	if (sdl2.keyboard.testAndRelease(SDLK_SEMICOLON))
-	{
-		selectedCar.prevPalette();
-	}
-	if (sdl2.keyboard.testAndRelease(SDLK_QUOTE))
-	{
-		selectedCar.nextPalette();
+		if (sdl2.keyboard.testAndRelease(SDLK_COMMA))
+		{
+			(cast(Car)selectedObject).prevModelBlock();
+		}
+		if (sdl2.keyboard.testAndRelease(SDLK_PERIOD))
+		{
+			(cast(Car)selectedObject).nextModelBlock();
+		}
+		if (sdl2.keyboard.testAndRelease(SDLK_SEMICOLON))
+		{
+			(cast(Car)selectedObject).prevPalette();
+		}
+		if (sdl2.keyboard.testAndRelease(SDLK_QUOTE))
+		{
+			(cast(Car)selectedObject).nextPalette();
+		}
 	}
 
 	if (sdl2.keyboard.testAndRelease(SDLK_p))
 	{
 		mode = mode == GL_FILL ? GL_LINE : GL_FILL;
 		glPolygonMode(GL_FRONT_AND_BACK, mode);
-	}
-
-	if (sdl2.keyboard.isPressed(SDLK_o))
-	{
-		drawNormals = true;
-	} else
-	{
-		drawNormals = false;
 	}
 }
 
@@ -328,68 +315,6 @@ private auto createShader(OpenGL opengl)
 	return new GLProgram(opengl, tunnelProgramSource);
 }
 
-private auto createNormalShader(OpenGL opengl)
-{
-	string tunnelProgramSource =
-		q{#version 330 core
-
-		#if VERTEX_SHADER
-		in ivec3 position;
-		in vec2 vertexUV;
-		in ivec3 inNormal;
-
-		out ivec3 normalOut;
-
-		void main()
-		{
-			gl_Position = vec4(position, 1.0);
-			normalOut = inNormal;
-		}
-		#endif
-
-		#if GEOMETRY_SHADER
-		layout(triangles) in;
-		layout(line_strip, max_vertices=6) out;
-
-		uniform mat4 mvpMatrix;
-		
-		in flat ivec3 normalOut[];
-
-		out vec4 vertex_color;
-
-		void main()
-		{
-			for(int i = 0; i < gl_in.length(); i++)
-		    {
-			    vec3 P = gl_in[i].gl_Position.xyz;
-				vec3 N = normalOut[i].xyz;
-
-				gl_Position = mvpMatrix * vec4(P, 1.0);
-				vertex_color = vec4(1,1,0.5,1);
-				EmitVertex();
-
-				gl_Position = mvpMatrix * vec4(P + N * 0.2, 1.0);
-				vertex_color = vec4(1,0,1,1);
-				EmitVertex();
-
-				EndPrimitive();
-		    }
-		}
-		#endif
-
-		#if FRAGMENT_SHADER
-		in vec4 vertex_color;
-		out vec4 Out_Color;
-		void main()
-		{
-		 	Out_Color = vertex_color;
-		}
-		#endif
-	};
-
-	return new GLProgram(opengl, tunnelProgramSource);
-}
-
 private void listCars()
 {
 	writeln("\nIndex\tCar Name");
@@ -401,8 +326,8 @@ private void listCars()
 
 private void displayCar(int index)
 {
-	selectedCar = binaryFile.getCar(index);
-	selectedCar.enableDrawing(gl, program, normalsProgram);
+	selectedObject = binaryFile.getCar(index);
+	selectedObject.enableDrawing(gl, program);
 	setWindowVisible(true);
 	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");
@@ -419,8 +344,8 @@ private void listTracks()
 
 private void displayTrack(int index, int variation)
 {
-	selectedTrack = binaryFile.getTrack(index, variation);
-	//selectedTrack.enableDrawing(gl, program, normalsProgram);
+	selectedObject = binaryFile.getTrack(index, variation);
+	//selectedObject.enableDrawing(gl, program);
 	//setWindowVisible(true);
 	//writefln("\nDisplaying car #%d", index);
 	//writeln("Press Escape to return to command window");

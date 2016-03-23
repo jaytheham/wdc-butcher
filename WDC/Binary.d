@@ -173,6 +173,7 @@ public:
 			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
 		}
 
+		// Physics data? i.e.: collision polygons?
 		// 0x4c Offset to null data that is turned into pointers to the inflated zlibs (is it??)
 		// 0x50 Count of words at above
 		indicesDescriptorOffsets = readInt(data, 0x54);
@@ -194,12 +195,98 @@ public:
 			zlibIndex = readShort(data, indicesLocation + (i * 2));
 			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
 			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+			writefln("_e_%x", data.length);
 		}
+		// After the 2200 the call to 1659c transforms the data just inflated
+		// the loop starting at 33f40 adds more data after the zlib data
+		// and there are more...
+
 		// Correct Output to here
-		// 0x68 -
-		// 0x80  \ These four are handled by the same function
-		// 0x98  /
-		// 0xb0 -
+		// Next four blocks are handled by the same function
+		//// 0x68 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		//// 0x6c Count of words at above
+		//indicesDescriptorOffsets = readInt(data, 0x70);
+		//indicesDescriptorOffsetsCount = readInt(data, 0x74);
+		//// 0x78 null? Check the ASM, looks like an offset to ? gets stored here after everything is done
+		//assert(readInt(data, 0x78) == 0, "78 can be something other than 0!");
+		//zlibOffsetTable = readInt(data, 0x7c);
+
+		//enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		//indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		//indicesCount = readInt(data, indicesDescriptorLocation);
+		//indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		//for (int i = 0; i < indicesCount; i++)
+		//{
+		//	zlibIndex = readShort(data, indicesLocation + (i * 2));
+		//	zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+		//	data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		//	writefln("_d_%x", data.length);
+		//}
+		//// 0x80 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		//// 0x84 Count of words at above
+		//indicesDescriptorOffsets = readInt(data, 0x88);
+		//indicesDescriptorOffsetsCount = readInt(data, 0x8c);
+		//// 0x90 null? Check the ASM, looks like an offset to ? gets stored here after everything is done
+		//assert(readInt(data, 0x90) == 0, "90 can be something other than 0!");
+		//zlibOffsetTable = readInt(data, 0x94);
+
+		//enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		//indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		//indicesCount = readInt(data, indicesDescriptorLocation);
+		//indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		//for (int i = 0; i < indicesCount; i++)
+		//{
+		//	zlibIndex = readShort(data, indicesLocation + (i * 2));
+		//	zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+		//	data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		//	writefln("_c_%x", data.length);
+		//}
+		//// 0x98 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		//// 0x9c Count of words at above
+		//indicesDescriptorOffsets = readInt(data, 0xa0);
+		//indicesDescriptorOffsetsCount = readInt(data, 0xa4);
+		//// 0xa8 null? Check the ASM, looks like an offset to ? gets stored here after everything is done
+		//assert(readInt(data, 0xa8) == 0, "a8 can be something other than 0!");
+		//zlibOffsetTable = readInt(data, 0xac);
+
+		//enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		//indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		//indicesCount = readInt(data, indicesDescriptorLocation);
+		//indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		//for (int i = 0; i < indicesCount; i++)
+		//{
+		//	zlibIndex = readShort(data, indicesLocation + (i * 2));
+		//	zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+		//	data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		//	writefln("_b_%x", data.length);
+		//}
+		//// 0xb0 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
+		//// 0xb4 Count of words at above
+		//indicesDescriptorOffsets = readInt(data, 0xb8);
+		//indicesDescriptorOffsetsCount = readInt(data, 0xbc);
+		//// 0xc0 null? Check the ASM, looks like an offset to ? gets stored here after everything is done
+		//assert(readInt(data, 0xc0) == 0, "c0 can be something other than 0!");
+		//zlibOffsetTable = readInt(data, 0xc4);
+
+		//enforce(trackVariation < indicesDescriptorOffsetsCount);
+
+		//indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		//indicesCount = readInt(data, indicesDescriptorLocation);
+		//indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		//for (int i = 0; i < indicesCount; i++)
+		//{
+		//	zlibIndex = readShort(data, indicesLocation + (i * 2));
+		//	zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+		//	data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+		//	writefln("_a_%x", data.length);
+		//}
 		// 0xc8
 		// 0xdc Doesn't use destination address
 		// 0xe8

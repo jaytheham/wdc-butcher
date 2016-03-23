@@ -4,14 +4,13 @@ import std.stdio,
 	   std.array,
 	   std.file,
 	   std.bitmanip,
-	   std.typecons;
+	   std.typecons,
+	   camera,
+	   gfm.math,
+	   gfm.opengl,
+	   wdc.drawable;
 
-import camera;
-
-import gfm.math,
-	   gfm.opengl;
-
-class Car
+class Car : Drawable
 {
 	private
 	{
@@ -28,7 +27,6 @@ class Car
 		GLVAO partVAO;
 		GLBuffer partVBO;
 		VertexSpecification!Vertex vs;
-		VertexSpecification!Vertex vs2;
 
 		ubyte[] dataBlob;
 
@@ -62,14 +60,13 @@ class Car
 		createFromBinary(data, textures, carPalettes);
 	}
 
-	void enableDrawing(OpenGL opengl, GLProgram prgrm, GLProgram prgrm2)
+	void enableDrawing(OpenGL opengl, GLProgram prgrm)
 	{
 		openGL = opengl;
 		program = prgrm;
 		model = mat4f.identity();
 
 		vs = new VertexSpecification!Vertex(program);
-		vs2 = new VertexSpecification!Vertex(prgrm2);
 
 		setupBuffers();
 		setModelBlock(-1);
@@ -105,17 +102,6 @@ class Car
 			partVAO.unbind();
 			program.unuse();
 		}
-	}
-
-	void drawNormals(Camera cam, GLProgram prgm)
-	{
-		prgm.uniform("mvpMatrix").set(cam.getPVM(model));
-		prgm.use();
-		partVAO.bind();
-		vs2.use();
-		glDrawArrays(GL_TRIANGLES, 0, partVertices.length);
-		partVAO.unbind();
-		prgm.unuse();
 	}
 
 	void nextModelBlock()
