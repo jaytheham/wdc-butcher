@@ -3,6 +3,7 @@ module wdc.binary;
 import std.conv,
 	   std.zlib,
 	   std.file,
+	   std.math,
 	   std.format,
 	   std.bitmanip,
 	   std.typecons,
@@ -174,34 +175,17 @@ public:
 		}
 
 		// Physics data? i.e.: collision polygons?
-		// 0x4c Offset to null data that is turned into pointers to the inflated zlibs (is it??)
-		// 0x50 Count of words at above
-		indicesDescriptorOffsets = readInt(data, 0x54);
-		indicesDescriptorOffsetsCount = readInt(data, 0x58);
-		// 0x5c null?
-		assert(readInt(data, 0x5c) == 0, "5c can be something other than 0!");
-		// 0x60 null?
-		assert(readInt(data, 0x60) == 0, "60 can be something other than 0!");
-		zlibOffsetTable = readInt(data, 0x64);
-
-		enforce(trackVariation < indicesDescriptorOffsetsCount);
-
-		indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
-		indicesCount = readInt(data, indicesDescriptorLocation);
-		indicesLocation = readInt(data, indicesDescriptorLocation + 4);
-
-		for (int i = 0; i < indicesCount; i++)
-		{
-			zlibIndex = readShort(data, indicesLocation + (i * 2));
-			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
-			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
-			writefln("_e_%x", data.length);
-		}
+		fnc_33a18(data, trackVariation, firstZlibEnd);
+		// Correct Output to here, but it needs to be transformed:
 		// After the 2200 the call to 1659c transforms the data just inflated
+		// then:
 		// the loop starting at 33f40 adds more data after the zlib data
+		// store 0000 after zlibed data (need to check how this pointer is calc'd)
+		// store 0000
+		// store ffff
 		// and there are more...
 
-		// Correct Output to here
+		
 		// Next four blocks are handled by the same function
 		//// 0x68 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
 		//// 0x6c Count of words at above
@@ -296,6 +280,109 @@ public:
 		return new Track(data);
 	}
 
+	void fnc_33a18(ref ubyte[] data, int trackVariation, int firstZlibEnd)
+	{
+		void fnc_1659c(ref ubyte[] data, int offset)
+		{
+			int cur_zlib_offset = offset; // s0
+			if (data.readInt(offset) != 0) {
+				data.writeInt(offset, data.readInt(offset) + cur_zlib_offset);
+			}
+			offset += 4;
+			if (data.readInt(offset) != 0) {
+				data.writeInt(offset, data.readInt(offset) + cur_zlib_offset);
+			}
+			offset = cur_zlib_offset + 0x24;
+			if (data.readInt(offset) != 0) {
+				data.writeInt(offset, data.readInt(offset) + cur_zlib_offset);
+			}
+			int t6 = data.readInt(cur_zlib_offset + 0x1c);
+			if (t6 != 0)
+			{
+				data.writeInt(cur_zlib_offset + 0x20, data.readInt(cur_zlib_offset + 0x20) + cur_zlib_offset);
+			}
+			// fnc_164d4:
+			int count = data.readInt(cur_zlib_offset + 8);
+			float f20 = 0;
+			int position = cur_zlib_offset; //s0
+			int s2 = cur_zlib_offset + 0x28;
+			int s3 = cur_zlib_offset + 0x40;
+			for (int i = 0; i < count; i++)
+			{
+				float f4 = data.readFloat(s2);
+				float f6 = data.readFloat(s2 + 4);
+				float f8 = data.readFloat(s2 + 8);
+				float f10 = data.readFloat(s3);
+				float f16 = data.readFloat(s3 + 0x4);
+				float f18 = data.readFloat(s3 + 0x8);
+				f4 = f10 - f4;
+				f6 = f16 - f6;
+				float f0 = f4 * f4;
+				f8 = f18 - f8;
+				f6 = f6 * f6;
+				f0 = f0 + f6;
+				f8 = f8 * f8;
+				f0 = f0 + f8;
+				f0 = sqrt(f0);
+				data.writeFloat(position + 0x34, f0);
+				data.writeFloat(position + 0x38, f20);
+				position += 0x18;
+				s2 += 0x18;
+				s3 += 0x18;
+				f20 += f0;
+			}
+			int t6_2 = count * 0x18;
+			data.writeInt(cur_zlib_offset + t6_2 + 0x34, 0);
+			data.writeFloat(cur_zlib_offset + t6_2 + 0x38, f20);
+			data.writeFloat(cur_zlib_offset + 0xc, f20);
+		}
+		int info_offset = 0x4c; // a0 sp(c8)
+		int cur_zlib_offset = data.length; // a1 sp(cc)
+
+		int total = readInt(data, info_offset + 4);
+
+		for (int i = 0; i < total; i++)
+		{
+			writeInt(data, readInt(data, info_offset) + (i * 4), 0);
+		}
+
+		int previousZlibOffset = 0; // s4
+		total = readInt(data, readInt(data, (readInt(data, info_offset + 8) + (trackVariation * 4))));
+
+		// 0x4c Offset to null data that is turned into pointers to the inflated zlibs
+		// 0x50 Count of words at above
+		int indicesDescriptorOffsets = readInt(data, 0x54);			// sp(c8) + 8
+		int indicesDescriptorOffsetsCount = readInt(data, 0x58);	// sp(c8) + c
+		// 0x5c
+		// 0x60
+		int zlibOffsetTable = readInt(data, 0x64);					// sp(c8) + 18
+
+		int indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
+		int indicesCount = readInt(data, indicesDescriptorLocation);
+		int indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+
+		for (int i = 0; i < total; i++)
+		{
+			short zlibIndex = readShort(data, indicesLocation + (i * 2));
+			int zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
+			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+
+			data.writeInt(data.readInt(info_offset) + (zlibIndex * 4), cur_zlib_offset); // ??
+			fnc_1659c(data, cur_zlib_offset);
+			cur_zlib_offset = data.length;
+			if (previousZlibOffset != 0)
+			{
+				data.writeInt(previousZlibOffset, data.readInt(data.readInt(info_offset) + (zlibIndex * 4)));
+				data.writeInt(data.readInt(data.readInt(info_offset) + (zlibIndex * 4)) + 4, previousZlibOffset);
+			}
+			previousZlibOffset = data.readInt(data.readInt(info_offset) + (zlibIndex * 4));
+			//int s2 = data.readInt(data.readInt(data.readInt(info_offset) + (zlibIndex * 4)) + 0x1c);
+			//s2 *= 2;
+			//int s3 = data.readInt(data.readInt(info_offset + 0x18) + (zlibIndex * 12) + 4) + (trackVariation * s2);
+			// Appears to be correct output to here, apart from stuff that is changed later
+		}
+	}
+
 	void dumpCarData(int index)
 	{
 		string workingDir = getcwd();
@@ -379,7 +466,7 @@ public:
 
 		return output;
 	}
-	// getTrack
+	
 	// replaceCar
 	// replaceTrack
 	// deleteCar?

@@ -10,6 +10,8 @@ import std.stdio,
 	   gfm.opengl,
 	   wdc.drawable;
 
+	   // This and track ought to provide their own shader program
+
 class Car : Drawable
 {
 	private
