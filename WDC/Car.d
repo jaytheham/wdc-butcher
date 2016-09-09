@@ -8,7 +8,9 @@ import std.stdio,
 	   camera,
 	   gfm.math,
 	   gfm.opengl,
-	   wdc.drawable;
+	   wdc.drawable,
+	   wdc.renderer,
+	   wdc.trackRenderer;
 
 	   // This and track ought to provide their own shader program
 
@@ -60,6 +62,11 @@ class Car : Drawable
 	this(ubyte[] data, ubyte[] textures, ubyte[] carPalettes)
 	{
 		createFromBinary(data, textures, carPalettes);
+	}
+
+	Renderer getRenderer(OpenGL openglInstance, GLProgram programInstance)
+	{
+		return new TrackRenderer(null, null, null);
 	}
 
 	void enableDrawing(OpenGL opengl, GLProgram prgrm)

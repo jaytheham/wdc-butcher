@@ -133,12 +133,16 @@ public:
 		// TODO: Is there any processing done to the initial zlib?
 		// TODO: I think so! there are differences at 0x30c
 
+		// Emulating all the sub functions of every part is not practical, let's just try and bundle all the pieces
+
 		// From here is fnc_34c84:
 		// Load variation data using offsets in first zlib:
 		fnc_334f8(trackVariation, firstZlibEnd);
+
+		Track newTrack = new Track(curTrackData);
 		
-		// Track sections?
-		//fnc_3373c(data, trackVariation, firstZlibEnd);
+		// Track sections
+		fnc_3373c(newTrack, trackVariation, firstZlibEnd);
 
 		// Physics data? i.e.: collision polygons?
 		//fnc_33a18(data, trackVariation, firstZlibEnd);
@@ -234,102 +238,9 @@ public:
 		// 0xdc Doesn't use destination address
 		// 0xe8
 
-		write("myTrackData", data);
+		write("myTrackData", curTrackData);
 
-		return new Track(data);
-	}
-
-	// Does RAM reads
-	void fnc_2ac60(int a0, int a1, int a2, int a3, int sp10)
-	{
-		int sp20 = a0;
-		// This reads from RAM!
-		int v0 = 0;//(ram.readInt(0x7fd30) * 20) + (sp20 * 4) + 0xb73d0;
-		int v1 = curTrackData.readInt(v0);
-		if (v1 < 0x7e)
-		{
-			curTrackData.incrementInt(v0, 1);
-		}
-
-		int a0_2 = ((curTrackData.readInt(0x7fd30) * 5) * 1024) + (sp20 * 1024) + (v1 * 8) + 0xb4bd0;
-		v0 = (((a1 * 256) & 0xf800) | ((a2 * 8) & 0x7c0)) | ((a3 / 4) & 0x3e);
-		int t8 = v0 | 1;
-		int t1 = (t8 | (t8 * 65536));
-		curTrackData.writeInt(a0_2 + 8, t1);
-
-		//v0 = fnc_71930(); v0 = Count (mfc0)
-
-		curTrackData.writeInt(a0_2 + 4, v0 - curTrackData.readInt(0x7fd3c));
-	}
-
-	// Does CACHE ops ... don't know how to handle them
-	void fnc_6fcb0(int a0, int a1)
-	{
-		if (a1 > 0)
-		{
-			if (a1 < 0x2000)
-			{
-				int t1 = a0 + a1;
-				if (a0 < t1)
-				{
-					t1 -= 0x10;
-					int t2 = a0 & 0xf;
-					if (t2 != 0)
-					{
-						int t0 = a0 - t2;
-						// TODO
-					}
-					else
-					{
-						// d00
-					}
-				}
-				else
-				{
-					return;
-				}
-			}
-		}
-		else
-		{
-			return;
-		}
-		//38
-	}
-
-	void fnc_1dc0(int a0, int a1, int a2, int a3, int sp48)
-	{
-		if (a3 == 0)
-		{
-			a3 = a2 - a1;
-			if (a3 == 0)
-			{
-				return;
-			}
-		}
-		
-		if (sp48 == 0)
-		{
-			// Skip as does CACHE ops, game loads without it
-			//fnc_6fcb0(a0, a3);
-		}
-		// Skip this as it needs RAM reads, game loads without it
-		//fnc_2ac60(0, 0xff, 0xff, 0, 0x8009a080); // The last arg isn't used by this func, is actually arg?
-		while (a3 >= 0x1001)
-		{
-			fnc_6fd60(fnc_470(), 0, 0, a1, a0, 0x1000, 0x800aa580); // Last three are sp10, sp14, sp18
-			a3 -= 0x1000;
-			a1 += 0x1000;
-			a0 += 0x1000;
-		}
-		fnc_6fd60(fnc_470(), 0, 0, a1, a0, a3, 0x800aa580); // Last three are sp10, sp14, sp18
-	}
-
-	void fnc_2060(int a0, int a1, int a2, int a3)
-	{
-		fnc_1dc0(a0, a1, a2, a3, 0);
-
-		fnc_53c();
+		return newTrack;
 	}
 
 	void fnc_334f8(int trackVariation, int firstZlibEnd)
@@ -382,10 +293,10 @@ public:
 			int unknown = curTrackData.readInt(inflatedDataPointers + (zlibIndex * 4));
 			int unknown2 = curTrackData.readInt(unknown + 0x1c);
 			int unknown3 = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 0x4) + (trackVariation * (unknown2 * 0x4));
-			int unknown4 = a2 = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 0x4) + (trackVariation * (unknown2 * 0x4)) + (unknown2 * 0x4);
+			int unknown4 = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 0x4) + (trackVariation * (unknown2 * 0x4)) + (unknown2 * 0x4);
 			
-			// This does transformation of the data, but also relys on reads from RAM ...
-			fnc_2060(curTrackData.readInt(unknown + 0x18), unknown3, unknown4, unknown2 * 0x4);
+			// This does transformation of the data, but also relies on reads from RAM ...
+			//fnc_2060(curTrackData.readInt(unknown + 0x18), unknown3, unknown4, unknown2 * 0x4);
 		}
 
 		/*
@@ -520,88 +431,94 @@ public:
 		*/
 	}
 
-	void fnc_3373c(ref ubyte[] data, int trackVariation, int firstZlibEnd)
+	void fnc_3373c(Track newTrack, int trackVariation, int firstZlibEnd)
 	{
 		// a0 = sp38 = primaryZlib + 0x34
 		// a1 = sp3c = end of current data / start of zlib being processed
 
 		// 0x34 Offset to null data that is turned into pointers into the inflated zlibs
 		// 0x38 Count of words at above
-		int indicesDescriptorOffsets = readInt(data, 0x3c);
-		int indicesDescriptorOffsetsCount = readInt(data, 0x40);
-		int zlibOffsetTable = readInt(data, 0x44);
+		int indicesDescriptorOffsets = readInt(curTrackData, 0x3c);
+		int indicesDescriptorOffsetsCount = readInt(curTrackData, 0x40);
+		int zlibOffsetTable = readInt(curTrackData, 0x44);
 
 		enforce(trackVariation < indicesDescriptorOffsetsCount);
 
-		int indicesDescriptorLocation = readInt(data, indicesDescriptorOffsets + (trackVariation * 4));
-		int indicesCount = readInt(data, indicesDescriptorLocation);
-		int indicesLocation = readInt(data, indicesDescriptorLocation + 4);
+		int indicesDescriptorLocation = readInt(curTrackData, indicesDescriptorOffsets + (trackVariation * 4));
+		int indicesCount = readInt(curTrackData, indicesDescriptorLocation);
+		int indicesLocation = readInt(curTrackData, indicesDescriptorLocation + 4);
 
 		short zlibIndex;
 		int zlibOffset;
 		int cur_zlib_start;
 		for (int i = 0; i < indicesCount; i++)
 		{
-			if (data.length % 0x10 != 0) // These data chunks must be aligned to 0x10
+			if (curTrackData.length % 0x10 != 0) // These data chunks must be aligned to 0x10
 			{
-				data.length += 0x10 - (data.length % 0x10);
+				curTrackData.length += 0x10 - (curTrackData.length % 0x10);
 			}
-			cur_zlib_start = data.length;
-			zlibIndex = readShort(data, indicesLocation + (i * 2));
-			zlibOffset = readInt(data, zlibOffsetTable + (zlibIndex * 12));
-			data ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+			cur_zlib_start = curTrackData.length;
+			zlibIndex = readShort(curTrackData, indicesLocation + (i * 2));
+			zlibOffset = readInt(curTrackData, zlibOffsetTable + (zlibIndex * 12));
+			curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
+			
 
-			//data.writeInt(0x34 + (zlibIndex * 4), data.readInt(zlibOffsetTable + (zlibIndex * 0x12) + 8));
-			int info_offset = data.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
-			data.writeInt(data.readInt(0x34) + (zlibIndex * 4), cur_zlib_start + info_offset);
+
+			//curTrackData.writeInt(0x34 + (zlibIndex * 4), curTrackData.readInt(zlibOffsetTable + (zlibIndex * 0x12) + 8));
+			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
+			newTrack.addBinaryTrackSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
+
+			write(format("tp_%.2d_%.8x %.8x", i, zlibOffset, info_offset), decompressZlibBlock(firstZlibEnd + zlibOffset));
+			
+			curTrackData.writeInt(curTrackData.readInt(0x34) + (zlibIndex * 4), cur_zlib_start + info_offset);
 
 			// TODO: All these and other internal pointers must be updated with the offset
 			// a0 = cur_zlib_start + info_offset
 			// a1 = sp3c
 			// info_offset + 0x18 = internal pointer
-			data.incrementInt(cur_zlib_start + info_offset + 0x18, cur_zlib_start);
+			curTrackData.incrementInt(cur_zlib_start + info_offset + 0x18, cur_zlib_start);
 			// info_offset + 0x20 = internal pointer
-			data.incrementInt(cur_zlib_start + info_offset + 0x20, cur_zlib_start);
+			curTrackData.incrementInt(cur_zlib_start + info_offset + 0x20, cur_zlib_start);
 
-			for (int s0 = 0; s0 < data[cur_zlib_start + info_offset + 0x1e]; s0++)
+			for (int s0 = 0; s0 < curTrackData[cur_zlib_start + info_offset + 0x1e]; s0++)
 			{
 				// a1 = sp3c
-				int a0 = data.readInt(cur_zlib_start + info_offset + 0x18) + (s0 * 16);
+				int a0 = curTrackData.readInt(cur_zlib_start + info_offset + 0x18) + (s0 * 16);
 				if (a0 != 0)
 				{
 					//	a0 is an internal pointer
-					data.incrementInt(a0, cur_zlib_start);
-					//	az = data.readInt(a0)
+					curTrackData.incrementInt(a0, cur_zlib_start);
+					//	az = curTrackData.readInt(a0)
 					//	az + 8 = internal pointer
-					data.incrementInt(a0 + 8, cur_zlib_start);
+					curTrackData.incrementInt(a0 + 8, cur_zlib_start);
 					//	az + 0x10 = internal pointer
-					data.incrementInt(a0 + 0x10, cur_zlib_start);
+					curTrackData.incrementInt(a0 + 0x10, cur_zlib_start);
 					//	az + 0x18 = internal pointer
-					data.incrementInt(a0 + 0x18, cur_zlib_start);
+					curTrackData.incrementInt(a0 + 0x18, cur_zlib_start);
 					//	az + 0x20 = internal pointer
-					data.incrementInt(a0 + 0x20, cur_zlib_start);
+					curTrackData.incrementInt(a0 + 0x20, cur_zlib_start);
 				}
 			} // 31f4c
-			for (int s0 = 0; s0 < data[cur_zlib_start + info_offset + 0x1f]; s0++)
+			for (int s0 = 0; s0 < curTrackData[cur_zlib_start + info_offset + 0x1f]; s0++)
 			{
 				// a0 = info_offset + 0x20 + (s0 * 20)
 				// a1 = sp3c
-				data[info_offset + 0x20 + (s0 * 20)] += 0x7b;
+				curTrackData[info_offset + 0x20 + (s0 * 20)] += 0x7b;
 			}
-			int a_0 = data.readInt(cur_zlib_start + info_offset + 0x8);
+			int a_0 = curTrackData.readInt(cur_zlib_start + info_offset + 0x8);
 			if (a_0 != 0)
 			{
 				//	a0 is an internal pointer
-				data.incrementInt(a_0, cur_zlib_start);
-				//	az = data.readInt(a0)
+				curTrackData.incrementInt(a_0, cur_zlib_start);
+				//	az = curTrackData.readInt(a0)
 				//	az + 8 = internal pointer
-				data.incrementInt(a_0 + 8, cur_zlib_start);
+				curTrackData.incrementInt(a_0 + 8, cur_zlib_start);
 				//	az + 0x10 = internal pointer
-				data.incrementInt(a_0 + 0x10, cur_zlib_start);
+				curTrackData.incrementInt(a_0 + 0x10, cur_zlib_start);
 				//	az + 0x18 = internal pointer
-				data.incrementInt(a_0 + 0x18, cur_zlib_start);
+				curTrackData.incrementInt(a_0 + 0x18, cur_zlib_start);
 				//	az + 0x20 = internal pointer
-				data.incrementInt(a_0 + 0x20, cur_zlib_start);
+				curTrackData.incrementInt(a_0 + 0x20, cur_zlib_start);
 			}
 		}
 	}
@@ -732,7 +649,7 @@ public:
 			int s2 = data.readInt(data.readInt(data.readInt(info_offset) + (zlibIndex * 4)) + 0x1c);
 			s2 *= 2;
 			int s3 = data.readInt(data.readInt(info_offset + 0x18) + (zlibIndex * 12) + 4) + (trackVariation * s2);
-			fnc_2060(data, data.readInt(data.readInt(varDataPointers + (zlibIndex * 4)) + 0x20), s3, s3 + s2, s2);
+			//fnc_2060(data, data.readInt(data.readInt(varDataPointers + (zlibIndex * 4)) + 0x20), s3, s3 + s2, s2);
 		}
 		data.writeInt(info_offset + 0x10, data.readInt(
 			data.readInt(info_offset) +

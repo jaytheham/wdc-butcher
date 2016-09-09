@@ -38,6 +38,16 @@ private
 	GLProgram program;
 
 	Drawable selectedObject;
+
+	struct UserCommand
+	{
+		string shortCommand;
+		string longCommand;
+		string description;
+		string usage;
+		bool function(string[] args) run;
+	}
+	UserCommand[] commands;
 }
 
 void main(string[] args)
@@ -61,6 +71,7 @@ void main(string[] args)
 	program = createShader(gl);
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
+	setupCommands();
 
 	while(!sdl2.wasQuitRequested())
 	{
@@ -127,93 +138,22 @@ private auto createSDLWindow(SDL2 sdl2)
 private void handleCommands()
 {
 	std.stdio.write("\nWaiting for input: ");
-	string[] commands = readln().removechars("{}").split();
-	if (commands.length > 0)
+	string[] args = readln().removechars("{}").split();
+	if (args.length > 0)
 	{
-		writeln(); 
-		switch (commands[0])
+		writeln();
+		foreach(cmd; commands)
 		{
-			case "dc":
-			case "display-car":
-				if (commands.length >= 2)
+			if (cmd.shortCommand == args[0] || cmd.longCommand == args[0])
+			{
+				if (!cmd.run(args))
 				{
-					displayCar(parse!int(commands[1]));
+					writeln(cmd.usage);
 				}
-				else
-				{
-					writeln("Usage: dc intCarIndex");
-				}
-				break;
-			case "dt":
-			case "display-track":
-				if (commands.length >= 3)
-				{
-					displayTrack(parse!int(commands[1]), parse!int(commands[2]));
-				}
-				else
-				{
-					writeln("Usage: dt intTrackIndex intTrackVariation");
-				}
-				break;
-			case "d":
-				if (commands.length >= 2)
-				{
-					int ofst = parse!int(commands[1]);
-					std.file.write(format("dumpedFile_%.8x", ofst), binaryFile.decompressZlibBlock(ofst));
-				}
-				else
-				{
-					writeln("You didn't specify an offset");
-				}
-				break;
-			
-			case "-h":
-			case "--help":
-			case "help":
-				writeHelp();
-				break;
-
-			case "lc":
-			case "list-cars":
-				listCars();
-				break;
-
-			case "lt":
-			case "list-trackss":
-				listTracks();
-				break;
-
-			case "ec":
-				if (commands.length >= 2)
-				{
-					binaryFile.dumpCarData(parse!int(commands[1]));
-				}
-				else
-				{
-					writeln("You didn't specify a car index");
-				}
-				break;
-
-			case "et":
-				if (commands.length >= 2)
-				{
-					binaryFile.dumpTrackData(parse!int(commands[1]));
-				}
-				else
-				{
-					writeln("You didn't specify a car index");
-				}
-				break;
-
-			case "v":
-			case "version":
-				writeln(releaseVersion);
-				break;
-
-			default:
-				writeln("Unrecognised command, type -h or --help for a list of available commands");
-				break;
+				return;
+			}
 		}
+		writeHelp(null);
 	}
 }
 
@@ -315,13 +255,14 @@ private auto createShader(OpenGL opengl)
 	return new GLProgram(opengl, tunnelProgramSource);
 }
 
-private void listCars()
+private bool listCars(string[] args)
 {
 	writeln("\nIndex\tCar Name");
 	writeln("-----\t--------\n");
 	foreach(index, carName; binaryFile.getCarList()){
 		writefln("%d\t%s", index, carName);
 	}
+	return true;
 }
 
 private void displayCar(int index)
@@ -333,13 +274,14 @@ private void displayCar(int index)
 	writeln("Press Escape to return to command window");
 }
 
-private void listTracks()
+private bool listTracks(string[] args)
 {
 	writeln("\nIndex\tTrack Name");
 	writeln("-----\t--------\n");
 	foreach(index, trackName; binaryFile.getTrackList()){
 		writefln("%d\t%s", index, trackName);
 	}
+	return true;
 }
 
 private void displayTrack(int index, int variation)
@@ -351,12 +293,40 @@ private void displayTrack(int index, int variation)
 	//writeln("Press Escape to return to command window");
 }
 
-private void writeHelp()
+private bool writeHelp(string[] args)
 {
 	writeln("\nAvailable commands:");
-	writeln("\tdc {0}\tdisplay-car {0}\tDisplay car {0}");
-	writeln("\t-h\t--help\t\t\tList commands");
-	writeln("\tlc\tlist-cars\t\tList cars in ROM");
-	writeln("\tv\tversion\t\tShow program version");
+	foreach(cmd; commands)
+	{
+		writefln("\t%s\t%s\t\t%s", cmd.shortCommand, cmd.longCommand, cmd.description);
+	}
 	writeln();
+	return true;
+}
+
+private void setupCommands()
+{
+	commands ~= UserCommand("lc", "--list-cars", "List car names and indices", "lc", &listCars);
+	commands ~= UserCommand("lt", "--list-tracks", "List track names and indices", "lt", &listTracks);
+	commands ~= UserCommand("dc", "--display-car", "Display car {index}", "dc {intCarIndex}",
+		(string[] args) {
+			if (args.length == 2) {
+				displayCar(parse!int(args[1]));
+				return true;
+			}
+			return false;
+		});
+	commands ~= UserCommand("dt", "--display-track", "Display track {index} {variation}", "dt {intTrackIndex} {intTrackVariation}",
+		(string[] args) {
+			if (args.length == 3) {
+				displayTrack(parse!int(args[1]), parse!int(args[2]));
+				return true;
+			}
+			return false;
+		});
+	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data {offset}");
+	commands ~= UserCommand("ec", "--extract-car", "Extract car {index} data");
+	commands ~= UserCommand("et", "--extract-track", "Extract track {index} {variation} data");
+	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
+	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(releaseVersion); return true; });
 }
