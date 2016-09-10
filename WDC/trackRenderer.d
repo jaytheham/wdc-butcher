@@ -24,6 +24,7 @@ class TrackRenderer : Renderer
 		struct Vertex
 		{
 			vec3i position;
+			vec4ub colour;
 			//vec2f vertexUV;
 			//vec3i inNormal;
 		}
@@ -50,7 +51,7 @@ class TrackRenderer : Renderer
 		sectionVAO.bind();
 		sectionVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, trackVertices[]);
 		sectionVAO.unbind();
-		
+
 		sectionVBO.setData(vertices[]);
 	}
 
@@ -78,24 +79,30 @@ class TrackRenderer : Renderer
 				{
 					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
 					                              modelInfo.vertices[polygon.vertexIndexOne].Y,
-					                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin);
+					                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin,
+					                              modelInfo.colours[polygon.vertexOneColourIndex]);
 					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexTwo].X,
 					                              modelInfo.vertices[polygon.vertexIndexTwo].Y,
-					                              modelInfo.vertices[polygon.vertexIndexTwo].Z) + origin);
+					                              modelInfo.vertices[polygon.vertexIndexTwo].Z) + origin,
+					                              modelInfo.colours[polygon.vertexTwoColourIndex]);
 					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
 					                              modelInfo.vertices[polygon.vertexIndexThree].Y,
-					                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin);
+					                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin,
+					                              modelInfo.colours[polygon.vertexThreeColourIndex]);
 					if (polygon.vertexIndexFour != 0xffff)
 					{
 						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
 						                              modelInfo.vertices[polygon.vertexIndexOne].Y,
-						                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin);
+						                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin,
+					                                  modelInfo.colours[polygon.vertexOneColourIndex]);
 						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
 						                              modelInfo.vertices[polygon.vertexIndexThree].Y,
-						                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin);
+						                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin,
+					                                  modelInfo.colours[polygon.vertexThreeColourIndex]);
 						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexFour].X,
 						                              modelInfo.vertices[polygon.vertexIndexFour].Y,
-						                              modelInfo.vertices[polygon.vertexIndexFour].Z) + origin);
+						                              modelInfo.vertices[polygon.vertexIndexFour].Z) + origin,
+					                                  modelInfo.colours[polygon.vertexFourColourIndex]);
 					}
 				}
 			}
@@ -153,20 +160,25 @@ class TrackRenderer : Renderer
 
 			#if VERTEX_SHADER
 			in ivec3 position;
+			in ivec4 colour;
+
+			out vec4 outColour;
 
 			uniform mat4 mvpMatrix;
 			void main()
 			{
 				gl_Position = mvpMatrix * vec4(position, 1.0);
+				outColour = vec4(colour.r / 255.0, colour.g / 255.0, colour.b / 255.0, colour.a / 255.0);
 			}
 			#endif
 
 			#if FRAGMENT_SHADER
-			out vec3 color;
+			in vec4 outColour;
+			out vec4 color;
 
 			void main()
 			{
-				color = vec3(1.0,1.0,1.0);
+				color = outColour;
 			}
 			#endif
 		};

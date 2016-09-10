@@ -20,34 +20,47 @@ class Track : Drawable
 
 	struct Polygon
 	{
-		long unknown_1; // Can probably get an idea of what these are from the car polygons
+		int unknown_1;
+		ubyte textureIndex;
+		ubyte unknown_2;
+		ubyte unknown_3;
+		ubyte unknown_4;
 		ushort vertexIndexOne;
 		ushort vertexIndexTwo;
 		ushort vertexIndexThree;
 		ushort vertexIndexFour;
-		long unknown_2;
-		long unknown_3;
+		ushort uvIndexOne;
+		ushort uvIndexTwo;
+		ushort uvIndexThree;
+		ushort uvIndexFour;
+		// I am assuming these are shorts, bytes would work just as well, are the upper bytes ever non-zero?
+		ushort vertexOneColourIndex;
+		ushort vertexTwoColourIndex;
+		ushort vertexThreeColourIndex;
+		ushort vertexFourColourIndex;
 	}
 
-	struct Unknown
+	// Don't know if these are actually signed
+	struct UV
 	{
-		int unknown_1;
+		short u;
+		short v;
 	}
 
-	struct Colour
-	{
-		ubyte B;
-		ubyte G;
-		ubyte R;
-		ubyte A;
-	}
+	//struct Colour
+	//{
+	//	ubyte R;
+	//	ubyte G;
+	//	ubyte B;
+	//	ubyte A;
+	//}
 
 	struct ModelInfo
 	{
 		Vertex[] vertices;
 		Polygon[] polygons;
-		Unknown[] unknowns;
-		Colour[] colours;
+		UV[] uvs;
+		vec4ub[] colours;
 		int originZ;
 		int originX;
 		int originY;
@@ -57,6 +70,8 @@ class Track : Drawable
 	{
 		ubyte[] binary;
 		ModelInfo[] models;
+		ubyte sectionsToDrawAhead;
+		ubyte sectionsToDrawBehind;
 	}
 
 	// break this blob out into parts, like with trackSections
@@ -87,8 +102,11 @@ class Track : Drawable
 		// These are different for different tracks, check do they get overwritten, or added to?
 
 		int modelPartsInfo;
-		int vertices, polygons, unknowns, colours;
-		int vertexCount, polygonCount, unknownCount, colourCount;
+		int vertices, polygons, uvs, colours;
+		int vertexCount, polygonCount, uvCount, colourCount;
+
+		newSection.sectionsToDrawAhead = newSectionBinary[sectionInfo + 0x1c];
+		newSection.sectionsToDrawBehind = newSectionBinary[sectionInfo + 0x1d];
 		
 		while (numAdditionalModelInfo >= 0)
 		{
@@ -96,20 +114,17 @@ class Track : Drawable
 
 			vertexCount = newSectionBinary.readInt(modelPartsInfo + 4);
 			polygonCount = newSectionBinary.readInt(modelPartsInfo + 12);
-			unknownCount = newSectionBinary.readInt(modelPartsInfo + 20);
+			uvCount = newSectionBinary.readInt(modelPartsInfo + 20);
 			colourCount = newSectionBinary.readInt(modelPartsInfo + 28);
 
-			assert(newSectionBinary[modelInfo + 6] % 8 == 0, "Not div by 8");
 			assert(newSectionBinary[modelInfo + 7] == 0, "Not 0");
-			assert(newSectionBinary[modelInfo + 10] % 8 == 0, "Not div by 8");
 			assert(newSectionBinary[modelInfo + 11] == 0, "Not 0");
-			assert(newSectionBinary[modelInfo + 14] % 8 == 0, "Not div by 8");
 			assert(newSectionBinary[modelInfo + 15] == 0, "Not 0");
 
 			newSection.models ~= ModelInfo(new Vertex[vertexCount],
 			                               new Polygon[polygonCount],
-			                               new Unknown[unknownCount],
-			                               new Colour[colourCount],
+			                               new UV[uvCount],
+			                               new vec4ub[colourCount],
 			                               newSectionBinary.readInt(modelInfo + 4),
 			                               newSectionBinary.readInt(modelInfo + 8),
 			                               newSectionBinary.readInt(modelInfo + 12)
@@ -129,26 +144,40 @@ class Track : Drawable
 			foreach(index; 0..polygonCount)
 			{
 				newSection.models[$ - 1].polygons[index] = Polygon(
-				                                                   newSectionBinary.readLong(polygons + (index * 32)),
+				                                                   newSectionBinary.readInt(polygons + (index * 32)),
+				                                                   newSectionBinary[polygons + 4 + (index * 32)],
+				                                                   newSectionBinary[polygons + 5 + (index * 32)],
+				                                                   newSectionBinary[polygons + 6 + (index * 32)],
+				                                                   newSectionBinary[polygons + 7 + (index * 32)],
+				                                                   // Vertices
 				                                                   newSectionBinary.readUshort(polygons + 8 + (index * 32)),
 				                                                   newSectionBinary.readUshort(polygons + 10 + (index * 32)),
 				                                                   newSectionBinary.readUshort(polygons + 12 + (index * 32)),
 				                                                   newSectionBinary.readUshort(polygons + 14 + (index * 32)),
-				                                                   newSectionBinary.readLong(polygons + 16 + (index * 32)),
-				                                                   newSectionBinary.readLong(polygons + 24 + (index * 32))
+				                                                   // UVs
+				                                                   newSectionBinary.readUshort(polygons + 16 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 18 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 20 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 22 + (index * 32)),
+				                                                   // Colours
+				                                                   newSectionBinary.readUshort(polygons + 24 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 26 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 28 + (index * 32)),
+				                                                   newSectionBinary.readUshort(polygons + 30 + (index * 32))
 				                                                  );
 			}
 
-			unknowns = newSectionBinary.readInt(modelPartsInfo + 16);
-			foreach(index; 0..unknownCount)
+			uvs = newSectionBinary.readInt(modelPartsInfo + 16);
+			foreach(index; 0..uvCount)
 			{
-				newSection.models[$ - 1].unknowns[index] = Unknown(newSectionBinary.readInt(unknowns + (index * 4)));
+				newSection.models[$ - 1].uvs[index] = UV(newSectionBinary.readShort(uvs + (index * 4)),
+				                                         newSectionBinary.readShort(uvs + 2 + (index * 4)));
 			}
 
 			colours = newSectionBinary.readInt(modelPartsInfo + 24);
 			foreach(index; 0..colourCount)
 			{
-				newSection.models[$ - 1].colours[index] = Colour(
+				newSection.models[$ - 1].colours[index] = vec4ub(
 				                                                 newSectionBinary[colours + (index * 4)],
 				                                                 newSectionBinary[colours + 1 + (index * 4)],
 				                                                 newSectionBinary[colours + 2 + (index * 4)],

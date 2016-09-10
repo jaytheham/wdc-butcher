@@ -19,7 +19,7 @@ class Camera
 		float vRadians = -0.65f;
 	}
 
-	this(float fov, float ratio, float nearClip = 1f, float farClip = 100000.0f)
+	this(float fov, float ratio, float nearClip = 100f, float farClip = 50000.0f)
 	{
 		position = vec3f(1000, 1000, -1000);
 		direction = vec3f(0, 0, 1);
