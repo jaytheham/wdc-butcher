@@ -11,61 +11,61 @@ import camera,
 
 class Track : Drawable
 {
+	private struct Vertex
+	{
+		short Z;
+		short X;
+		short Y;
+	}
+
+	struct Polygon
+	{
+		long unknown_1; // Can probably get an idea of what these are from the car polygons
+		ushort vertexIndexOne;
+		ushort vertexIndexTwo;
+		ushort vertexIndexThree;
+		ushort vertexIndexFour;
+		long unknown_2;
+		long unknown_3;
+	}
+
+	struct Unknown
+	{
+		int unknown_1;
+	}
+
+	struct Colour
+	{
+		ubyte B;
+		ubyte G;
+		ubyte R;
+		ubyte A;
+	}
+
+	struct ModelInfo
+	{
+		Vertex[] vertices;
+		Polygon[] polygons;
+		Unknown[] unknowns;
+		Colour[] colours;
+		int originX;
+		int originY;
+		int originZ;
+	}
+
+	struct TrackSection
+	{
+		ubyte[] binary;
+		ModelInfo[] models;
+	}
+
+	// break this blob out into parts, like with trackSections
+	ubyte[] mainBlob;
+
+	TrackSection[] trackSections;
+
 	private
 	{
-		struct Vertex
-		{
-			short Z;
-			short X;
-			short Y;
-		}
-
-		struct Polygon
-		{
-			long unknown_1; // Can probably get an idea of what these are from the car polygons
-			ushort vertexIndexOne;
-			ushort vertexIndexTwo;
-			ushort vertexIndexThree;
-			ushort vertexIndexFour;
-			long unknown_2;
-			long unknown_3;
-		}
-
-		struct Unknown
-		{
-			int unknown_1;
-		}
-
-		struct Colour
-		{
-			ubyte B;
-			ubyte G;
-			ubyte R;
-			ubyte A;
-		}
-
-		struct ModelInfo
-		{
-			Vertex[] vertices;
-			Polygon[] polygons;
-			Unknown[] unknowns;
-			Colour[] colours;
-			int originX;
-			int originY;
-			int originZ;
-		}
-
-		struct TrackSection
-		{
-			ubyte[] binary;
-			ModelInfo[] models;
-		}
-
-		// break this blob out into parts, like with trackSections
-		ubyte[] mainBlob;
-
-		TrackSection[] trackSections;
-
 		TrackRenderer renderer;
 	}
 
@@ -76,17 +76,20 @@ class Track : Drawable
 
 	void addBinaryTrackSection(ubyte[] newSectionBinary, int sectionInfo)
 	{
-		trackSections ~= TrackSection(newSectionBinary);
-		TrackSection newSection = trackSections[$ - 1];
+		TrackSection newSection = TrackSection(newSectionBinary);
 
 		int modelInfo = sectionInfo + 8;
 		int nextModelInfo = newSectionBinary.readInt(sectionInfo + 0x18);
 		int numAdditionalModelInfo = newSectionBinary[sectionInfo + 0x1e];
 
+		//assert(newSectionBinary.readInt(sectionInfo) == 0x419, "419");
+		//assert(newSectionBinary.readInt(sectionInfo + 4) == 0x28fc, "28fc");
+		// These are different for different tracks, check do they get overwritten, or added to?
+
 		int modelPartsInfo;
 		int vertices, polygons, unknowns, colours;
 		int vertexCount, polygonCount, unknownCount, colourCount;
-
+		
 		while (numAdditionalModelInfo >= 0)
 		{
 			modelPartsInfo = newSectionBinary.readInt(modelInfo);
@@ -95,6 +98,13 @@ class Track : Drawable
 			polygonCount = newSectionBinary.readInt(modelPartsInfo + 12);
 			unknownCount = newSectionBinary.readInt(modelPartsInfo + 20);
 			colourCount = newSectionBinary.readInt(modelPartsInfo + 28);
+
+			assert(newSectionBinary[modelInfo + 6] % 8 == 0, "Not div by 8");
+			assert(newSectionBinary[modelInfo + 7] == 0, "Not 0");
+			assert(newSectionBinary[modelInfo + 10] % 8 == 0, "Not div by 8");
+			assert(newSectionBinary[modelInfo + 11] == 0, "Not 0");
+			assert(newSectionBinary[modelInfo + 14] % 8 == 0, "Not div by 8");
+			assert(newSectionBinary[modelInfo + 15] == 0, "Not 0");
 
 			newSection.models ~= ModelInfo(new Vertex[vertexCount],
 			                               new Polygon[polygonCount],
@@ -150,25 +160,17 @@ class Track : Drawable
 			
 			numAdditionalModelInfo -= 1;
 		}
+		trackSections ~= newSection;
 	}
 
-	void enableDrawing(OpenGL openglInstance, GLProgram programInstance)
+	void setupDrawing(OpenGL openglInstance)
 	{
-		// TODO, refactor car and drawable so this can be removed, its on renderer
+		renderer = new TrackRenderer(this, openglInstance);
 	}
 
 	void draw(Camera cam)
 	{
-		// TODO, refactor car and drawable so this can be removed, its on renderer
-	}
-
-	Renderer getRenderer(OpenGL openglInstance, GLProgram programInstance)
-	{
-		if (renderer is null)
-		{
-			renderer = new TrackRenderer(this, openglInstance, programInstance);
-		}
-		return renderer;
+		renderer.draw(cam);
 	}
 
 private:

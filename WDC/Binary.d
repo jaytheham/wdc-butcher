@@ -468,7 +468,7 @@ public:
 			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
 			newTrack.addBinaryTrackSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
 
-			write(format("tp_%.2d_%.8x %.8x", i, zlibOffset, info_offset), decompressZlibBlock(firstZlibEnd + zlibOffset));
+			//write(format("tp_%.2d_%.8x %.8x", i, zlibOffset, info_offset), decompressZlibBlock(firstZlibEnd + zlibOffset));
 			
 			curTrackData.writeInt(curTrackData.readInt(0x34) + (zlibIndex * 4), cur_zlib_start + info_offset);
 

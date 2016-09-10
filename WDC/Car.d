@@ -66,19 +66,53 @@ class Car : Drawable
 
 	Renderer getRenderer(OpenGL openglInstance, GLProgram programInstance)
 	{
-		return new TrackRenderer(null, null, null);
+		return new TrackRenderer(null, null);
 	}
 
-	void enableDrawing(OpenGL opengl, GLProgram prgrm)
+	void setupDrawing(OpenGL opengl)
 	{
 		openGL = opengl;
-		program = prgrm;
+		program = createShader(openGL);
 		model = mat4f.identity();
 
 		vs = new VertexSpecification!Vertex(program);
 
 		setupBuffers();
 		setModelBlock(-1);
+	}
+
+	private auto createShader(OpenGL opengl)
+	{
+		string tunnelProgramSource =
+			q{#version 330 core
+
+			#if VERTEX_SHADER
+			in ivec3 position;
+			in vec2 vertexUV;
+
+			out vec2 UV;
+
+			uniform mat4 mvpMatrix;
+			void main()
+			{
+				gl_Position = mvpMatrix * vec4(position, 1.0);
+				UV = vertexUV;
+			}
+			#endif
+
+			#if FRAGMENT_SHADER
+			in vec2 UV;
+			out vec4 color;
+			uniform sampler2D textureSampler;
+
+			void main()
+			{
+				color = texture( textureSampler, UV ).rgba;
+			}
+			#endif
+		};
+
+		return new GLProgram(opengl, tunnelProgramSource);
 	}
 
 	void draw(Camera cam)

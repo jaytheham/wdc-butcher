@@ -35,7 +35,6 @@ private
 	int mode;
 
 	OpenGL gl;
-	GLProgram program;
 
 	Drawable selectedObject;
 
@@ -67,8 +66,6 @@ void main(string[] args)
 	window.hide();
 
 	setOpenGLState();
-
-	program = createShader(gl);
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
 	setupCommands();
@@ -183,6 +180,14 @@ private void handleInput(SDL2 sdl2)
 	{
 		mode = mode == GL_FILL ? GL_LINE : GL_FILL;
 		glPolygonMode(GL_FRONT_AND_BACK, mode);
+		if (mode == GL_LINE)
+		{
+			glDisable(GL_CULL_FACE);
+		}
+		else
+		{
+			glEnable(GL_CULL_FACE);
+		}
 	}
 }
 
@@ -221,40 +226,6 @@ private void setOpenGLState()
 	gl.redirectDebugOutput();
 }
 
-private auto createShader(OpenGL opengl)
-{
-	string tunnelProgramSource =
-		q{#version 330 core
-
-		#if VERTEX_SHADER
-		in ivec3 position;
-		in vec2 vertexUV;
-
-		out vec2 UV;
-
-		uniform mat4 mvpMatrix;
-		void main()
-		{
-			gl_Position = mvpMatrix * vec4(position, 1.0);
-			UV = vertexUV;
-		}
-		#endif
-
-		#if FRAGMENT_SHADER
-		in vec2 UV;
-		out vec4 color;
-		uniform sampler2D textureSampler;
-
-		void main()
-		{
-			color = texture( textureSampler, UV ).rgba;
-		}
-		#endif
-	};
-
-	return new GLProgram(opengl, tunnelProgramSource);
-}
-
 private bool listCars(string[] args)
 {
 	writeln("\nIndex\tCar Name");
@@ -268,7 +239,7 @@ private bool listCars(string[] args)
 private void displayCar(int index)
 {
 	selectedObject = binaryFile.getCar(index);
-	selectedObject.enableDrawing(gl, program);
+	selectedObject.setupDrawing(gl);
 	setWindowVisible(true);
 	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");
@@ -287,10 +258,10 @@ private bool listTracks(string[] args)
 private void displayTrack(int index, int variation)
 {
 	selectedObject = binaryFile.getTrack(index, variation);
-	//selectedObject.enableDrawing(gl, program);
-	//setWindowVisible(true);
-	//writefln("\nDisplaying car #%d", index);
-	//writeln("Press Escape to return to command window");
+	selectedObject.setupDrawing(gl);
+	setWindowVisible(true);
+	writefln("\nDisplaying track #%d variation %d", index, variation);
+	writeln("Press Escape to return to command window");
 }
 
 private bool writeHelp(string[] args)

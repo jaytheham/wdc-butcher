@@ -6,9 +6,8 @@ import camera,
 
 interface Drawable
 {
-	// move these two onto renderer, drawable just means it has a renderer, which does the actual drawing
-	void enableDrawing(OpenGL openglInstance, GLProgram programInstance);
-	void draw(Camera cam);
+	void setupDrawing(OpenGL openglInstance);
 
-	Renderer getRenderer(OpenGL openglInstance, GLProgram programInstance);
+	// is just a passthrough to the renderer
+	void draw(Camera cam);
 }
