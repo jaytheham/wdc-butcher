@@ -11,7 +11,7 @@ import camera,
 
 class Track : Drawable
 {
-	private struct Vertex
+	struct Vertex
 	{
 		short Z;
 		short X;
@@ -48,9 +48,9 @@ class Track : Drawable
 		Polygon[] polygons;
 		Unknown[] unknowns;
 		Colour[] colours;
+		int originZ;
 		int originX;
 		int originY;
-		int originZ;
 	}
 
 	struct TrackSection

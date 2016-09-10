@@ -277,7 +277,7 @@ public:
 			// @33628: // This gets added to by function_0x2fd08 @3363c, I do it it one step there
 			//curTrackData.writeInt(inflatedDataPointers + (zlibIndex * 4), curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8));
 			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
-			writefln("** %x  %x", inflatedDataPointers + (zlibIndex * 4), cur_zlib_start + info_offset );
+			//writefln("** %x  %x", inflatedDataPointers + (zlibIndex * 4), cur_zlib_start + info_offset );
 			// @3363c:
 			curTrackData.writeInt(inflatedDataPointers + (zlibIndex * 4), cur_zlib_start + info_offset);
 			// @32934:

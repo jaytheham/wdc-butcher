@@ -27,6 +27,7 @@ class TrackRenderer : Renderer
 			//vec2f vertexUV;
 			//vec3i inNormal;
 		}
+		Vertex[] trackVertices;
 		Vertex[] sectionVertices;
 	}
 
@@ -38,45 +39,67 @@ class TrackRenderer : Renderer
 		model = mat4f.identity();
 		vs = new VertexSpecification!Vertex(program);
 
-		setupBuffers();
-		loadSectionVertices();
-		sectionVBO.setData(sectionVertices[]);
+		//loadSectionVertices();
+		loadTrackVertices();
+		setupBuffers(trackVertices);
 	}
 
-	private auto createShader(OpenGL opengl)
-	{
-		string tunnelProgramSource =
-			q{#version 330 core
-
-			#if VERTEX_SHADER
-			in ivec3 position;
-
-			uniform mat4 mvpMatrix;
-			void main()
-			{
-				gl_Position = mvpMatrix * vec4(position, 1.0);
-			}
-			#endif
-
-			#if FRAGMENT_SHADER
-			out vec3 color;
-
-			void main()
-			{
-				color = vec3(1.0,1.0,0.5);
-			}
-			#endif
-		};
-
-		return new GLProgram(opengl, tunnelProgramSource);
-	}
-
-	void setupBuffers()
+	void setupBuffers(Vertex[] vertices)
 	{
 		sectionVAO = new GLVAO(openGL);
 		sectionVAO.bind();
-		sectionVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, sectionVertices[]);
+		sectionVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, trackVertices[]);
 		sectionVAO.unbind();
+		
+		sectionVBO.setData(vertices[]);
+	}
+
+	int convertOrigin(int coord)
+	{
+		assert((coord & 0xff) == 0, "Low byte is not what we thought it was Jim");
+		return coord / 2048;
+	}
+
+	void loadTrackVertices()
+	{
+		vec3i origin;
+		trackVertices.length = 0;
+		
+		foreach(trackSection; source.trackSections)
+		{
+			foreach(modelInfo; trackSection.models)
+			{
+
+				origin = vec3i(convertOrigin(modelInfo.originX),
+				               convertOrigin(modelInfo.originY),
+				               convertOrigin(modelInfo.originZ));
+
+				foreach(polygon; modelInfo.polygons)
+				{
+					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+					                              modelInfo.vertices[polygon.vertexIndexOne].Y,
+					                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin);
+					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexTwo].X,
+					                              modelInfo.vertices[polygon.vertexIndexTwo].Y,
+					                              modelInfo.vertices[polygon.vertexIndexTwo].Z) + origin);
+					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+					                              modelInfo.vertices[polygon.vertexIndexThree].Y,
+					                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin);
+					if (polygon.vertexIndexFour != 0xffff)
+					{
+						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+						                              modelInfo.vertices[polygon.vertexIndexOne].Y,
+						                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin);
+						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+						                              modelInfo.vertices[polygon.vertexIndexThree].Y,
+						                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin);
+						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexFour].X,
+						                              modelInfo.vertices[polygon.vertexIndexFour].Y,
+						                              modelInfo.vertices[polygon.vertexIndexFour].Z) + origin);
+					}
+				}
+			}
+		}
 	}
 
 	void loadSectionVertices()
@@ -118,8 +141,36 @@ class TrackRenderer : Renderer
 		program.use();
 		sectionVAO.bind();
 		vs.use();
-		glDrawArrays(GL_TRIANGLES, 0, sectionVertices.length);
+		glDrawArrays(GL_TRIANGLES, 0, trackVertices.length);
 		sectionVAO.unbind();
 		program.unuse();
+	}
+
+	private auto createShader(OpenGL opengl)
+	{
+		string tunnelProgramSource =
+			q{#version 330 core
+
+			#if VERTEX_SHADER
+			in ivec3 position;
+
+			uniform mat4 mvpMatrix;
+			void main()
+			{
+				gl_Position = mvpMatrix * vec4(position, 1.0);
+			}
+			#endif
+
+			#if FRAGMENT_SHADER
+			out vec3 color;
+
+			void main()
+			{
+				color = vec3(1.0,1.0,1.0);
+			}
+			#endif
+		};
+
+		return new GLProgram(opengl, tunnelProgramSource);
 	}
 }
