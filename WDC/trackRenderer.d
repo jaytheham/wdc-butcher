@@ -23,13 +23,14 @@ class TrackRenderer : Renderer
 
 		struct Vertex
 		{
-			vec3i position;
-			vec4ub colour;
+			vec3f position;
+			vec4ub colour = vec4ub(cast(ubyte)0xff, cast(ubyte)0xff, cast(ubyte)0xff, cast(ubyte)0xff);
 			//vec2f vertexUV;
 			//vec3i inNormal;
 		}
 		Vertex[] trackVertices;
 		Vertex[] sectionVertices;
+		Vertex[] collisionVertices;
 	}
 
 	this(Track sourceTrack, OpenGL openglInstance)
@@ -42,14 +43,15 @@ class TrackRenderer : Renderer
 
 		//loadSectionVertices();
 		loadTrackVertices();
-		setupBuffers(trackVertices);
+		loadCollisionVertices();
+		setupBuffers(collisionVertices);
 	}
 
 	void setupBuffers(Vertex[] vertices)
 	{
 		sectionVAO = new GLVAO(openGL);
 		sectionVAO.bind();
-		sectionVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, trackVertices[]);
+		sectionVBO = new GLBuffer(openGL, GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices[]);
 		sectionVAO.unbind();
 
 		sectionVBO.setData(vertices[]);
@@ -66,9 +68,9 @@ class TrackRenderer : Renderer
 		vec3i origin;
 		trackVertices.length = 0;
 		
-		foreach(trackSection; source.trackSections)
+		foreach(trackMeshSection; source.trackMeshSections)
 		{
-			foreach(modelInfo; trackSection.models)
+			foreach(modelInfo; trackMeshSection.models)
 			{
 
 				origin = vec3i(convertOrigin(modelInfo.originX),
@@ -77,29 +79,29 @@ class TrackRenderer : Renderer
 
 				foreach(polygon; modelInfo.polygons)
 				{
-					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+					trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexOne].X,
 					                              modelInfo.vertices[polygon.vertexIndexOne].Y,
 					                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin,
 					                              modelInfo.colours[polygon.vertexOneColourIndex]);
-					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexTwo].X,
+					trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexTwo].X,
 					                              modelInfo.vertices[polygon.vertexIndexTwo].Y,
 					                              modelInfo.vertices[polygon.vertexIndexTwo].Z) + origin,
 					                              modelInfo.colours[polygon.vertexTwoColourIndex]);
-					trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+					trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexThree].X,
 					                              modelInfo.vertices[polygon.vertexIndexThree].Y,
 					                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin,
 					                              modelInfo.colours[polygon.vertexThreeColourIndex]);
 					if (polygon.vertexIndexFour != 0xffff)
 					{
-						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+						trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexOne].X,
 						                              modelInfo.vertices[polygon.vertexIndexOne].Y,
 						                              modelInfo.vertices[polygon.vertexIndexOne].Z) + origin,
 					                                  modelInfo.colours[polygon.vertexOneColourIndex]);
-						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+						trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexThree].X,
 						                              modelInfo.vertices[polygon.vertexIndexThree].Y,
 						                              modelInfo.vertices[polygon.vertexIndexThree].Z) + origin,
 					                                  modelInfo.colours[polygon.vertexThreeColourIndex]);
-						trackVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexFour].X,
+						trackVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexFour].X,
 						                              modelInfo.vertices[polygon.vertexIndexFour].Y,
 						                              modelInfo.vertices[polygon.vertexIndexFour].Z) + origin,
 					                                  modelInfo.colours[polygon.vertexFourColourIndex]);
@@ -113,31 +115,66 @@ class TrackRenderer : Renderer
 	{
 		sectionVertices.length = 0;
 		
-		foreach(modelInfo; source.trackSections[0].models)
+		foreach(modelInfo; source.trackMeshSections[0].models)
 		{
 			foreach(polygon; modelInfo.polygons)
 			{
-				sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+				sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexOne].X,
 				                                modelInfo.vertices[polygon.vertexIndexOne].Y,
 				                                modelInfo.vertices[polygon.vertexIndexOne].Z));
-				sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexTwo].X,
+				sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexTwo].X,
 				                                modelInfo.vertices[polygon.vertexIndexTwo].Y,
 				                                modelInfo.vertices[polygon.vertexIndexTwo].Z));
-				sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+				sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexThree].X,
 				                                modelInfo.vertices[polygon.vertexIndexThree].Y,
 				                                modelInfo.vertices[polygon.vertexIndexThree].Z));
 				if (polygon.vertexIndexFour != 0xffff)
 				{
-					sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexOne].X,
+					sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexOne].X,
 					                            modelInfo.vertices[polygon.vertexIndexOne].Y,
 					                            modelInfo.vertices[polygon.vertexIndexOne].Z));
-					sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexThree].X,
+					sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexThree].X,
 					                            modelInfo.vertices[polygon.vertexIndexThree].Y,
 					                            modelInfo.vertices[polygon.vertexIndexThree].Z));
-					sectionVertices ~= Vertex(vec3i(modelInfo.vertices[polygon.vertexIndexFour].X,
+					sectionVertices ~= Vertex(vec3f(modelInfo.vertices[polygon.vertexIndexFour].X,
 					                            modelInfo.vertices[polygon.vertexIndexFour].Y,
 					                            modelInfo.vertices[polygon.vertexIndexFour].Z));
 				}
+			}
+		}
+	}
+
+	void loadCollisionVertices()
+	{
+		collisionVertices.length = 0;
+		vec4ub[6] clrs;
+		clrs[0] = vec4ub(cast(ubyte)(0x0),cast(ubyte)(0x0),cast(ubyte)(0xff), cast(ubyte)0xff);
+		clrs[1] = vec4ub(cast(ubyte)(0x0),cast(ubyte)(0xff),cast(ubyte)(0x00), cast(ubyte)0xff);
+		clrs[2] = vec4ub(cast(ubyte)(0xff),cast(ubyte)(0x0),cast(ubyte)(0x00), cast(ubyte)0xff);
+		clrs[3] = vec4ub(cast(ubyte)(0x0),cast(ubyte)(0xff),cast(ubyte)(0xff), cast(ubyte)0xff);
+		clrs[4] = vec4ub(cast(ubyte)(0xff),cast(ubyte)(0x0),cast(ubyte)(0xff), cast(ubyte)0xff);
+		clrs[5] = vec4ub(cast(ubyte)(0xff),cast(ubyte)(0xff),cast(ubyte)(0x0), cast(ubyte)0xff);
+		
+		foreach(i, collisionSection; source.trackCollisionSections)
+		{
+			clrs[0] = vec4ub(cast(ubyte)(collisionSection.unknownBs.length * 16),cast(ubyte)(0x0),cast(ubyte)(0xff), cast(ubyte)0xff);
+			foreach(polygon; collisionSection.polygons)
+			{
+				collisionVertices ~= Vertex(vec3f(collisionSection.vertices[polygon.vertexIndexOne].x,
+				                                  collisionSection.vertices[polygon.vertexIndexOne].y,
+				                                  collisionSection.vertices[polygon.vertexIndexOne].z),
+				clrs[0]);
+				//                                  collisionSection.vertices[polygon.vertexIndexOne].lightColour);
+				collisionVertices ~= Vertex(vec3f(collisionSection.vertices[polygon.vertexIndexTwo].x,
+				                                  collisionSection.vertices[polygon.vertexIndexTwo].y,
+				                                  collisionSection.vertices[polygon.vertexIndexTwo].z),
+				clrs[0]);
+				//                                  collisionSection.vertices[polygon.vertexIndexTwo].lightColour);
+				collisionVertices ~= Vertex(vec3f(collisionSection.vertices[polygon.vertexIndexThree].x,
+				                                  collisionSection.vertices[polygon.vertexIndexThree].y,
+				                                  collisionSection.vertices[polygon.vertexIndexThree].z),
+				clrs[0]);
+				//                                  collisionSection.vertices[polygon.vertexIndexThree].lightColour);
 			}
 		}
 	}
@@ -148,7 +185,7 @@ class TrackRenderer : Renderer
 		program.use();
 		sectionVAO.bind();
 		vs.use();
-		glDrawArrays(GL_TRIANGLES, 0, trackVertices.length);
+		glDrawArrays(GL_TRIANGLES, 0, collisionVertices.length);
 		sectionVAO.unbind();
 		program.unuse();
 	}
@@ -159,7 +196,7 @@ class TrackRenderer : Renderer
 			q{#version 330 core
 
 			#if VERTEX_SHADER
-			in ivec3 position;
+			in vec3 position;
 			in ivec4 colour;
 
 			out vec4 outColour;

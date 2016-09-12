@@ -257,7 +257,15 @@ private bool listTracks(string[] args)
 
 private void displayTrack(int index, int variation)
 {
-	selectedObject = binaryFile.getTrack(index, variation);
+	try
+	{
+		selectedObject = binaryFile.getTrack(index, variation);
+	}
+	catch (Exception e)
+	{
+		writeln(e.msg);
+		return;
+	}
 	selectedObject.setupDrawing(gl);
 	setWindowVisible(true);
 	writefln("\nDisplaying track #%d variation %d", index, variation);
