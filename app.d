@@ -289,16 +289,34 @@ private void setupCommands()
 	commands ~= UserCommand("lt", "--list-tracks", "List track names and indices", "lt", &listTracks);
 	commands ~= UserCommand("dc", "--display-car", "Display car {index}", "dc {intCarIndex}",
 		(string[] args) {
-			if (args.length == 2) {
-				displayCar(parse!int(args[1]));
+			if (args.length == 2)
+			{
+				try
+				{
+					displayCar(parse!int(args[1]));
+				}
+				catch (ConvException e)
+				{
+					writeln(e.msg);
+					return false;
+				}
 				return true;
 			}
 			return false;
 		});
 	commands ~= UserCommand("dt", "--display-track", "Display track {index} {variation}", "dt {intTrackIndex} {intTrackVariation}",
 		(string[] args) {
-			if (args.length == 3) {
-				displayTrack(parse!int(args[1]), parse!int(args[2]));
+			if (args.length == 3)
+			{
+				try
+				{
+					displayTrack(parse!int(args[1]), parse!int(args[2]));
+				}
+				catch (ConvException e)
+				{
+					writeln(e.msg);
+					return false;
+				}
 				return true;
 			}
 			return false;

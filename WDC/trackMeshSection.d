@@ -15,11 +15,16 @@ class TrackMeshSection
 
 	struct Polygon
 	{
-		int unknown_1;
+		ushort unknown_1;
+		// Rendering order or something?
+		// Different values can cause the polygon to render over the car
+		ushort unknown_2;
+		// Some values cause the polygon to disappear
 		ubyte textureIndex;
-		ubyte unknown_2;
 		ubyte unknown_3;
 		ubyte unknown_4;
+		ubyte unknown_5;
+		// Null? Can't see any effect from changing these 3
 		ushort vertexIndexOne;
 		ushort vertexIndexTwo;
 		ushort vertexIndexThree;
@@ -119,27 +124,28 @@ class TrackMeshSection
 			foreach(index; 0..polygonCount)
 			{
 				models[$ - 1].polygons[index] = Polygon(
-				                                                   newSectionBinary.readInt(polygons + (index * 32)),
-				                                                   newSectionBinary[polygons + 4 + (index * 32)],
-				                                                   newSectionBinary[polygons + 5 + (index * 32)],
-				                                                   newSectionBinary[polygons + 6 + (index * 32)],
-				                                                   newSectionBinary[polygons + 7 + (index * 32)],
-				                                                   // Vertices
-				                                                   newSectionBinary.readUshort(polygons + 8 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 10 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 12 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 14 + (index * 32)),
-				                                                   // UVs
-				                                                   newSectionBinary.readUshort(polygons + 16 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 18 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 20 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 22 + (index * 32)),
-				                                                   // Colours
-				                                                   newSectionBinary.readUshort(polygons + 24 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 26 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 28 + (index * 32)),
-				                                                   newSectionBinary.readUshort(polygons + 30 + (index * 32))
-				                                                  );
+				                                        newSectionBinary.readUshort(polygons + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 2 + (index * 32)),
+				                                        newSectionBinary[polygons + 4 + (index * 32)],
+				                                        newSectionBinary[polygons + 5 + (index * 32)],
+				                                        newSectionBinary[polygons + 6 + (index * 32)],
+				                                        newSectionBinary[polygons + 7 + (index * 32)],
+				                                        // Vertices
+				                                        newSectionBinary.readUshort(polygons + 8 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 10 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 12 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 14 + (index * 32)),
+				                                        // UVs
+				                                        newSectionBinary.readUshort(polygons + 16 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 18 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 20 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 22 + (index * 32)),
+				                                        // Colours
+				                                        newSectionBinary.readUshort(polygons + 24 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 26 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 28 + (index * 32)),
+				                                        newSectionBinary.readUshort(polygons + 30 + (index * 32))
+				                                        );
 			}
 
 			uvs = newSectionBinary.readInt(modelPartsInfo + 16);

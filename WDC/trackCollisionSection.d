@@ -12,15 +12,15 @@ class TrackCollisionSection
 		ushort vertexIndexOne;
 		ushort vertexIndexTwo;
 		ushort vertexIndexThree;
-		ubyte unknown1;
+		ushort unknown1;
 		// this looks like (most of the time) it is an
 		// index into the values of unknownAs (sectionInfo + 0x10)
 		ubyte unknown2;
-		ubyte unknown3;
+		// if unknown1 is an index then this is 0x80 (or vice versa)
+		ubyte groundType;
 		// Varies from track to track
 		// for black forest A 0=dirt, 1=grass, 2=corner bumpers, 3=road
 		// for rome A 0=dirt 1=gravel 2=road 3=cobblestones 4=? 5=bumpers
-		ubyte groundType;
 	}
 
 	struct Vertex
@@ -29,19 +29,23 @@ class TrackCollisionSection
 		float x;
 		float y;
 		vec4ub lightColour; // Alpha is always 0x00, the game ignores it
+
+		// Are these indices into UnknownB?
+		short unknown1;
 		// These increase in value the further around the track this point is in clockwise direction
 		// They reset to 0 a lot less than unknown2, usually (always?) at points where variations diverge
 		// The sections where they equal 0xffff are the sections where track variations diverge
 		// but are part of both variations
-		short unknown1;
+		short unknown2;
 		// These increase in value the further around the track this point is in anti-clockwise direction
 		// Regularly restarting from 0
 		// Used to tell if you're driving the wrong way? Or your placing?
-		short unknown2;
 	}
 
 	struct UnknownA
 	{
+		// Setting all of these to 0xffff for a polygon will prevent you from drving onto it
+		// The camera will try avoid going through it too
 		short unknown1;
 		short unknown2;
 		short unknown3;
@@ -53,6 +57,7 @@ class TrackCollisionSection
 	struct UnknownB
 	{
 		int unknown1;
+		// These are always 0. The game stores values here after loading the track.
 	}
 
 	ubyte[] binary;
@@ -73,8 +78,7 @@ class TrackCollisionSection
 			                    binary.readUshort(polygonData + (index * 10)),
 			                    binary.readUshort(polygonData + 2 + (index * 10)),
 			                    binary.readUshort(polygonData + 4 + (index * 10)),
-			                    binary[polygonData + 6 + (index * 10)],
-			                    binary[polygonData + 7 + (index * 10)],
+			                    binary.readUshort(polygonData + 6 + (index * 10)),
 			                    binary[polygonData + 8 + (index * 10)],
 			                    binary[polygonData + 9 + (index * 10)]
 			                   );
@@ -115,8 +119,8 @@ class TrackCollisionSection
 			                  );
 		}
 
-		int unknownBData = binary.readInt(sectionInfo + 16);
-		int unknownBCount = binary.readInt(sectionInfo + 20);
+		int unknownBData = binary.readInt(sectionInfo + 24);
+		int unknownBCount = binary.readInt(sectionInfo + 28);
 		foreach(index; 0..unknownBCount)
 		{
 			unknownBs ~= UnknownB(binary.readInt(unknownBData + (index * 4)));
