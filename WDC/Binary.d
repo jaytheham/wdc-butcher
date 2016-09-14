@@ -130,24 +130,18 @@ public:
 		int firstZlibEnd = readInt(binary, zlibOffset) + zlibOffset;
 
 		curTrackData = decompressZlibBlock(zlibOffset);
-		// TODO: Is there any processing done to the initial zlib?
-		// TODO: I think so! there are differences at 0x30c
-
-		// Emulating all the sub functions of every part is not practical, let's just try and bundle all the pieces
-
-		// From here is fnc_34c84:
-		// Load variation data using offsets in first zlib:
-		fnc_334f8(trackVariation, firstZlibEnd);
+		write("primaryZlib", curTrackData);
 
 		Track newTrack = new Track(curTrackData);
+
+		// From here is fnc_34c84:
+		// Collision sections
+		fnc_334f8(newTrack, trackVariation, firstZlibEnd);
 		
 		// Track sections
 		fnc_3373c(newTrack, trackVariation, firstZlibEnd);
 
-		// Physics data? i.e.: collision polygons?
 		//fnc_33a18(data, trackVariation, firstZlibEnd);
-		// Correct Output to here, but it needs to be transformed
-
 		
 		// Next four blocks are handled by the same function
 		//// 0x68 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
@@ -243,22 +237,16 @@ public:
 		return newTrack;
 	}
 
-	void fnc_334f8(int trackVariation, int firstZlibEnd)
+	void fnc_334f8(Track newTrack, int trackVariation, int firstZlibEnd)
 	{
-		// All writes in this function are emulated
-		//sp38=a0=0x20=start of main zlib+0x20
-		//sp3c=a1=end of current data
-		//sp40=a2=track variation
-
 		int inflatedDataPointers = readInt(curTrackData, 0x20);
 		// 0x24 inflatedDataPointersCount Count of words at above
 		int indicesDescriptorOffsets = readInt(curTrackData, 0x28);
 		int indicesDescriptorOffsetsCount = readInt(curTrackData, 0x2c);
 		int zlibOffsetTable = readInt(curTrackData, 0x30);
 
-		// @33544	Set each of the inflatedDataPointers to 0x00000000
-
-		enforce(trackVariation < indicesDescriptorOffsetsCount);
+		enforce(trackVariation < indicesDescriptorOffsetsCount,
+		        format("Error: Given track variation (%d) is greater than number available: %d", trackVariation, indicesDescriptorOffsetsCount));
 
 		int indicesDescriptorLocation = readInt(curTrackData, indicesDescriptorOffsets + (trackVariation * 4));
 		int indicesCount = readInt(curTrackData, indicesDescriptorLocation);
@@ -267,168 +255,18 @@ public:
 		short zlibIndex;
 		int zlibOffset;
 		int cur_zlib_start;
+		int info_offset;
 		for (int i = 0; i < indicesCount; i++)
 		{
 			cur_zlib_start = curTrackData.length;
-			zlibIndex = readShort(curTrackData, indicesLocation + (i * 2)); // s1
+			zlibIndex = readShort(curTrackData, indicesLocation + (i * 2));
 			zlibOffset = readInt(curTrackData, zlibOffsetTable + (zlibIndex * 12));
-			// JAL function_0x20b0(zlibOffset)
-			curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset); // JAL function_0x2200
-			// @33628: // This gets added to by function_0x2fd08 @3363c, I do it it one step there
-			//curTrackData.writeInt(inflatedDataPointers + (zlibIndex * 4), curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8));
-			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
-			//writefln("** %x  %x", inflatedDataPointers + (zlibIndex * 4), cur_zlib_start + info_offset );
-			// @3363c:
-			curTrackData.writeInt(inflatedDataPointers + (zlibIndex * 4), cur_zlib_start + info_offset);
-			// @32934:
-			// cur_zlib_start + info_offset = pointer to this zlibs start
-			curTrackData.writeInt(cur_zlib_start + info_offset, cur_zlib_start);
-			// cur_zlib_start + info_offset + 8 = internal pointer
-			curTrackData.writeInt(cur_zlib_start + info_offset + 8, curTrackData.readInt(cur_zlib_start + info_offset + 8) + cur_zlib_start);
-			// cur_zlib_start + info_offset + 10 = internal pointer
-			curTrackData.writeInt(cur_zlib_start + info_offset + 0x10, curTrackData.readInt(cur_zlib_start + info_offset + 0x10) + cur_zlib_start);
-			// cur_zlib_start + info_offset + 18 = internal pointer
-			curTrackData.writeInt(cur_zlib_start + info_offset + 0x18, curTrackData.readInt(cur_zlib_start + info_offset + 0x18) + cur_zlib_start);
-
-			int unknown = curTrackData.readInt(inflatedDataPointers + (zlibIndex * 4));
-			int unknown2 = curTrackData.readInt(unknown + 0x1c);
-			int unknown3 = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 0x4) + (trackVariation * (unknown2 * 0x4));
-			int unknown4 = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 0x4) + (trackVariation * (unknown2 * 0x4)) + (unknown2 * 0x4);
+			info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
 			
-			// This does transformation of the data, but also relies on reads from RAM ...
-			//fnc_2060(curTrackData.readInt(unknown + 0x18), unknown3, unknown4, unknown2 * 0x4);
+			newTrack.addBinaryCollisionSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
+			//curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset); // JAL function_0x2200
+			//write(format("u %d", i), decompressZlibBlock(firstZlibEnd + zlibOffset));
 		}
-
-		/*
-		Assembly:
-		{
-
-			0x33500		(sp + 0x38) = addressMainZlib + 0x20
-
-			0x33504		(sp + 0x3c) = addressCurrentDataEnd
-
-			0x33508		(sp + 0x40) = trackVariation
-
-			0x33520		s0 = 0x0
-
-			0x33524		inflatedDataPointersCount = (LW  (addressMainZlib + 0x24))
-
-			0x33528		at = (s0 < t7)
-
-			0x3352c		while  (s0 < inflatedDataPointersCount)
-
-					{
-
-			0x33544				*(int*)(inflatedDataPointers + (s0 * 0x4)) = 0
-
-			0x3354c				s0++	
-
-					}
-
-			0x33568		s0 = 0x0
-
-			0x33574		t8 = ((LW  (addressMainZlib + 0x28)) + (trackVariation * 0x4))
-
-			0x33578		indicesDescriptorLocation = (LW  t8)
-
-			0x3357c		indicesCount = (LW  t9)
-
-			0x33580		at = (s0 < t0)
-
-			0x33584		while  (s0 < indicesCount)
-
-					{
-
-			0x335a0				t6 = (indicesDescriptorOffsets + (trackVariation * 0x4))
-
-			0x335a4				indicesDescriptorLocation = (LW  t6)
-
-			0x335ac				t9 = (indicesLocation + (s0 * 0x2))
-
-			0x335b0				zlibIndex = s1 = (LHU  t9)
-
-			0x335c8				t2 = (zlibOffsetTable + (zlibIndex  * 12))
-
-			0x335d0				zlibOffset = (LW  t2)
-
-							JAL function_0x20b0(zlibOffset)
-
-			0x335d8				t4 = addressMainZlib + 0x20
-
-			0x335ec				a0 = addressCurrentDataEnd = (LW  (sp + 0x3c))
-
-			0x335f4				a1 = zlibOffset = (LW  (zlibOffsetTable) + (zlibIndex * 12)))
-
-			0x335fc				a2 = 0x0
-
-							JAL function_0x2200(a0, a1, a2)
-
-			0x33624				t6 = (inflatedDataPointers + (zlibIndex * 0x4))
-
-			0x33628				(SW  t6) = (LW  (zlibOffsetTable + (zlibIndex * 12) + 0x8))
-
-			0x33634				a1 = addressCurrentDataEnd
-
-			0x33640				a0 = (inflatedDataPointers + (zlibIndex * 0x4))
-
-							JAL function_0x2fd08(a0, a1)
-
-			0x3364c				a1 = addressCurrentDataEnd
-
-			0x3365c				a0 = (LW  (inflatedDataPointers  + (zlibIndex * 0x4)))
-
-							JAL function_0x32934(a0, a1)
-
-
-			0x33668				sp + 0x3c += v0
-
-			0x3367c				t0 = (LW  (inflatedDataPointers + (zlibIndex  * 0x4)))
-
-			0x33680				s2 = (LW  (t0 + 0x1c))
-
-
-			0x33690				t8 = (LW  (sp + 0x38))
-
-			0x33694				
-
-			0x33698				$LO = (trackVariation * (s2 * 0x4))
-
-
-			0x336a8				t3 = (zlibOffsetTable + (zlibIndex * 12))
-
-
-			0x336bc				t9 = (LW  (sp + 0x38))
-
-
-			0x336c4				a1 = ((LW  (t3 + 0x4)) + $LO)
-				
-
-			0x336cc				a2 = (((LW  (t3 + 0x4)) + $LO) + (s2 * 0x4))
-
-			0x336d0				a3 = (s2 * 0x4)
-
-
-			0x336d8				t2 = (LW (inflatedDataPointers + (zlibIndex * 0x4)))
-
-			0x336e0				a0 = (LW  (t2 + 0x18))
-
-							JAL function_0x2060()
-				
-
-			0x336ec				s0++
-
-			0x3370c			
-
-					}
-
-
-			0x33714		v0 = (LW  (sp + 0x3c))
-
-
-
-					Return
-		}
-		*/
 	}
 
 	void fnc_3373c(Track newTrack, int trackVariation, int firstZlibEnd)
@@ -462,64 +300,11 @@ public:
 			zlibOffset = readInt(curTrackData, zlibOffsetTable + (zlibIndex * 12));
 			curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
 			
-
-
 			//curTrackData.writeInt(0x34 + (zlibIndex * 4), curTrackData.readInt(zlibOffsetTable + (zlibIndex * 0x12) + 8));
 			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
 			newTrack.addBinaryTrackSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
 
 			//write(format("tp_%.2d_%.8x %.8x", i, zlibOffset, info_offset), decompressZlibBlock(firstZlibEnd + zlibOffset));
-			
-			curTrackData.writeInt(curTrackData.readInt(0x34) + (zlibIndex * 4), cur_zlib_start + info_offset);
-
-			// TODO: All these and other internal pointers must be updated with the offset
-			// a0 = cur_zlib_start + info_offset
-			// a1 = sp3c
-			// info_offset + 0x18 = internal pointer
-			curTrackData.incrementInt(cur_zlib_start + info_offset + 0x18, cur_zlib_start);
-			// info_offset + 0x20 = internal pointer
-			curTrackData.incrementInt(cur_zlib_start + info_offset + 0x20, cur_zlib_start);
-
-			for (int s0 = 0; s0 < curTrackData[cur_zlib_start + info_offset + 0x1e]; s0++)
-			{
-				// a1 = sp3c
-				int a0 = curTrackData.readInt(cur_zlib_start + info_offset + 0x18) + (s0 * 16);
-				if (a0 != 0)
-				{
-					//	a0 is an internal pointer
-					curTrackData.incrementInt(a0, cur_zlib_start);
-					//	az = curTrackData.readInt(a0)
-					//	az + 8 = internal pointer
-					curTrackData.incrementInt(a0 + 8, cur_zlib_start);
-					//	az + 0x10 = internal pointer
-					curTrackData.incrementInt(a0 + 0x10, cur_zlib_start);
-					//	az + 0x18 = internal pointer
-					curTrackData.incrementInt(a0 + 0x18, cur_zlib_start);
-					//	az + 0x20 = internal pointer
-					curTrackData.incrementInt(a0 + 0x20, cur_zlib_start);
-				}
-			} // 31f4c
-			for (int s0 = 0; s0 < curTrackData[cur_zlib_start + info_offset + 0x1f]; s0++)
-			{
-				// a0 = info_offset + 0x20 + (s0 * 20)
-				// a1 = sp3c
-				curTrackData[info_offset + 0x20 + (s0 * 20)] += 0x7b;
-			}
-			int a_0 = curTrackData.readInt(cur_zlib_start + info_offset + 0x8);
-			if (a_0 != 0)
-			{
-				//	a0 is an internal pointer
-				curTrackData.incrementInt(a_0, cur_zlib_start);
-				//	az = curTrackData.readInt(a0)
-				//	az + 8 = internal pointer
-				curTrackData.incrementInt(a_0 + 8, cur_zlib_start);
-				//	az + 0x10 = internal pointer
-				curTrackData.incrementInt(a_0 + 0x10, cur_zlib_start);
-				//	az + 0x18 = internal pointer
-				curTrackData.incrementInt(a_0 + 0x18, cur_zlib_start);
-				//	az + 0x20 = internal pointer
-				curTrackData.incrementInt(a_0 + 0x20, cur_zlib_start);
-			}
 		}
 	}
 
