@@ -74,7 +74,7 @@ public:
 										 ..
 										 carAssetsOffset[region] + offset + 4])
 						 + assetsStringOffset;
-			nameOffset &= 0xfffffff;
+			nameOffset &= 0x0fffffff;
 			nameSize = 0;
 			while(binary[nameOffset + nameSize] != 0)
 			{
@@ -91,11 +91,16 @@ public:
 		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
 		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
 		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x1c..carAssetOffset + 0x20]);
-		int palettesOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
+		int palettesAOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
+		int palettesBOffset = peek!int(binary[carAssetOffset + 0x2C..carAssetOffset + 0x30]);
+		int palettesCOffset = peek!int(binary[carAssetOffset + 0x34..carAssetOffset + 0x38]);
 		
 		return new Car(decompressZlibBlock(dataBlobOffset),
 						decompressZlibBlock(textureBlobOffset),
-						binary[palettesOffset..palettesOffset + (carInsertedPalettes * carPaletteSize)]);
+						// assuming palettes are always 0x100 in size ...
+						binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * carPaletteSize)],
+						binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * carPaletteSize)],
+						binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * carPaletteSize)]);
 	}
 
 	char[][] getTrackList()
