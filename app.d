@@ -25,10 +25,11 @@ import std.math,
 
 private
 {
-	int width = 1280;
-	int height = 720;
+	enum int WINDOW_WIDTH = 1280;
+	enum int WINDOW_HEIGHT = 720;
+	enum string RELEASE_VERSION = "0.0.0 Feb 16 2016";
+
 	Binary binaryFile;
-	string releaseVersion = "0.0.0 Feb 16 2016";
 	SDL2Window window;
 	bool windowVisible = false;
 
@@ -67,7 +68,7 @@ void main(string[] args)
 
 	setOpenGLState();
 
-	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)width / height);
+	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)WINDOW_WIDTH / WINDOW_HEIGHT);
 	setupCommands();
 
 	while(!sdl2.wasQuitRequested())
@@ -129,7 +130,7 @@ private auto createSDLWindow(SDL2 sdl2)
 
 	// create an OpenGL-enabled SDL window
 	return new SDL2Window(sdl2, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-								width, height, SDL_WINDOW_OPENGL);
+								WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 }
 
 private void handleCommands()
@@ -325,5 +326,5 @@ private void setupCommands()
 	commands ~= UserCommand("ec", "--extract-car", "Extract car {index} data");
 	commands ~= UserCommand("et", "--extract-track", "Extract track {index} {variation} data");
 	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
-	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(releaseVersion); return true; });
+	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
 }

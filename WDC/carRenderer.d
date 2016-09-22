@@ -163,7 +163,7 @@ class CarRenderer : Renderer
 			}
 		}
 		
-		int textureDescriptorTableOffset = peek!int(dataBlob[0xb4..0xb8]); // Is this always here ?
+		int textureDescriptorTableOffset = peek!int(dataBlob[0xb4..0xb8]);
 		int textureCount = peek!int(dataBlob[0xb8..0xbc]);
 		int curTextureNum = 0;
 
@@ -233,14 +233,14 @@ class CarRenderer : Renderer
 	{
 		Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum, int normalOffset)
 		{
-			return Vertex(vec3i(peek!short(dataBlob[vertexOffset    ..vertexOffset + 2]),
-								peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
-							   -peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4])),
-						  vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
-								cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
-						  vec3i(cast(int)cast(byte)dataBlob[normalOffset],
-						  		cast(int)cast(byte)dataBlob[normalOffset + 2],
-						  	   -cast(int)cast(byte)dataBlob[normalOffset + 1]));
+			return Vertex(vec3i(peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4]),
+			                    peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
+			                    peek!short(dataBlob[vertexOffset    ..vertexOffset + 2])),
+			              vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
+			                    cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
+			              vec3i(cast(int)cast(byte)dataBlob[normalOffset + 1],
+			                    cast(int)cast(byte)dataBlob[normalOffset + 2],
+			                    cast(int)cast(byte)dataBlob[normalOffset]));
 		}
 		
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
@@ -350,7 +350,6 @@ class CarRenderer : Renderer
 			return;
 		}
 		int textureNum = dataBlob[polygonOffset + 4];
-		writeln(textureNum);
 		// use modelBlockIndex to index into the first lot of texture descriptor pointers
 		int textureCmdPointers = peek!int(dataBlob[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
 		int textureCmdPointer = textureCmdPointers + textureNum * 4;

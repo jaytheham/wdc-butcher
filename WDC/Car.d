@@ -43,63 +43,6 @@ class Car : Drawable
 		renderer.draw(camera);
 	}
 
-	void nextModelBlock()
-	{
-		//setModelBlock(modelBlockIndex + 1);
-	}
-
-	void prevModelBlock()
-	{
-		//setModelBlock(modelBlockIndex - 1);
-	}
-
-	void setModelBlock(int newblockNum)
-	{
-		if (newblockNum < -1)
-		{
-			//modelBlockIndex = numModelBlocks - 1;
-		}
-		//else if (newblockNum >= numModelBlocks)
-		//{
-		//	modelBlockIndex = -1;
-		//}
-		else
-		{
-		//	modelBlockIndex = newblockNum;
-		}
-
-		//if (modelBlockIndex != -1)
-		//{
-		//	loadModelData();
-		//	updateBuffers();
-		//}
-	}
-
-	void nextPalette()
-	{
-		//setPalette(paletteIndex + 1);
-	}
-
-	void prevPalette()
-	{
-		//setPalette(paletteIndex - 1);
-	}
-
-	void setPalette(int paletteNum)
-	{
-		//paletteIndex = paletteNum;
-		//if (paletteIndex < 0)
-		//{
-	//		paletteIndex = numPalettes - 1;
-		//}
-		//else if (paletteIndex >= numPalettes)
-		//{
-		//	paletteIndex = 0;
-		//}
-	//	writefln("p%x", paletteIndex);
-		//loadTexture(partTextureBytes, modelBlockIndex);
-		//setupTextures(partTexture, partTextureBytes);
-	}
 
 private:
 	void createFromBinary(ubyte[] data, ubyte[] textureSource, ubyte[] palettesA, ubyte[] palettesB, ubyte[] palettesC)
@@ -109,27 +52,5 @@ private:
 		palettes1 = palettesA;
 		palettes2 = palettesB;
 		palettes3 = palettesC;
-	}
-
-	void createFromModel(ubyte[] data)
-	{
-		writeln("**** UNIMPLEMENTED ****");
-	}
-
-	void updateBuffers()
-	{
-		//partVBO.setData(partVertices[]);
-		//setupTextures(partTexture, partTextureBytes);
-	}
-
-	void loadModelData()
-	{
-		//loadVertices(partVertices, modelBlockIndex);
-		//loadTexture(partTextureBytes, modelBlockIndex);
-
-		//if (partVertices.length < 3)
-		//{
-		//	writeln("NOTE: Too few vertices defined to draw anything");
-		//}
 	}
 }
