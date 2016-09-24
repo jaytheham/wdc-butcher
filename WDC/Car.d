@@ -36,7 +36,7 @@ class Car : Drawable
 			float unknown1;
 			float carCameraYOffset;
 			vec3f[4] wheelOrigins;
-			vec3f[4] headlightOrigins;
+			vec3f[4] lightOrigins;
 			TextureDescriptor[] bodyTextureDescriptors;
 			TextureDescriptor[] wheelTextureDescriptors;
 		}

@@ -5,6 +5,7 @@ import std.math,
 	std.string,
 	std.random,
 	std.format,
+	std.zlib,
 	std.typecons,
 
 	core.thread,
@@ -50,11 +51,24 @@ private
 	UserCommand[] commands;
 }
 
+void testing()
+{
+	ubyte[] input;
+	File binaryHandle = File("input", "r");
+	input.length = cast(uint)binaryHandle.size;
+	binaryHandle.rawRead(input);
+	binaryHandle.close();
+
+	std.file.write("output deflated", compress(input, 9));
+}
+
 void main(string[] args)
 {
 	writeln("World Driver Championship for N64 viewer");
 	writeln("Created by jaytheham @ gmail.com");
 	writeln("--------------------------------\n");
+
+	//testing();
 
 	binaryFile = getWDCBinary(args);
 
@@ -112,6 +126,14 @@ private char[] getKeys(SDL2 sdl2)
 	if (sdl2.keyboard.testAndRelease(SDLK_2))
 	{
 		keys ~= '2';
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_3))
+	{
+		keys ~= '3';
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_4))
+	{
+		keys ~= '4';
 	}
 	return keys;
 }

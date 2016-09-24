@@ -155,9 +155,7 @@ class CarRenderer : Renderer
 		}
 
 		palettesOffset = peek!int(data[0..4]) + 4; // Correct ??
-		while (peek!int(data[palettesOffset + (paletteSize * numPalettes)
-								..
-								palettesOffset + (paletteSize * numPalettes) + 4]) != 0)
+		while (data.readInt(palettesOffset + (paletteSize * numPalettes)) != 0)
 		{
 			numPalettes++;
 		}
@@ -239,6 +237,21 @@ class CarRenderer : Renderer
 			{
 				setModelBlock(modelBlockIndex + 1);
 			}
+			if (key == '3')
+			{
+				paletteIndex--;
+				paletteIndex = paletteIndex < 0 ? numPalettes - 1 : paletteIndex;
+				loadModelData();
+				updateBuffers();
+			}
+			else if (key == '4')
+			{
+				paletteIndex++;
+				paletteIndex = paletteIndex >= numPalettes ? 0 : paletteIndex;
+				loadModelData();
+				updateBuffers();
+				writefln("Model:%.2X palette:%.2X", modelBlockIndex, paletteIndex);
+			}
 		}
 	}
 
@@ -272,17 +285,21 @@ class CarRenderer : Renderer
 
 	private void setupTextures(ref GLTexture2D curTexture, ref ubyte[] textureBytes)
 	{
-		//if (curTexture)
-		//{
-		//	delete curTexture;
-		//}
 		//std.file.write(format("car tex #%.2X.raw", modelBlockIndex), textureBytes);
 		curTexture = new GLTexture2D(openGL);
 		curTexture.setMinFilter(GL_LINEAR);
 		curTexture.setMagFilter(GL_LINEAR);
-		// 3D wheel models want to use GL_MIRRORED_REPEAT
-		curTexture.setWrapS(GL_CLAMP_TO_EDGE);
-		curTexture.setWrapT(GL_CLAMP_TO_EDGE);
+		if (modelBlockIndex < 0x1D)
+		{
+			curTexture.setWrapS(GL_CLAMP_TO_EDGE);
+			curTexture.setWrapT(GL_CLAMP_TO_EDGE);
+		}
+		else
+		{
+			// wheels
+			curTexture.setWrapS(GL_MIRRORED_REPEAT);
+			curTexture.setWrapT(GL_MIRRORED_REPEAT);
+		}
 		curTexture.setImage(0, GL_RGBA, 80, 38, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, textureBytes.ptr);
 	}
 
@@ -411,9 +428,8 @@ class CarRenderer : Renderer
 			return;
 		}
 		int textureNum = data[polygonOffset + 4];
-		// use modelBlockIndex to index into the first lot of texture descriptor pointers
 		int textureCmdPointers = peek!int(data[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
-		int textureCmdPointer = textureCmdPointers + textureNum * 4;
+		int textureCmdPointer = textureCmdPointers + modelIndex * 4;
 		int textureCmdOffset = peek!int(data[textureCmdPointer..textureCmdPointer + 4]);
 
 		int textureOffset = peek!int(data[textureCmdOffset + 4..textureCmdOffset + 8]);
@@ -429,9 +445,9 @@ class CarRenderer : Renderer
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = data[palettesOffset + paletteIndex * paletteSize
+		auto palette = data[palettesOffset + (paletteIndex * paletteSize)
 								..
-								palettesOffset + paletteIndex * paletteSize + paletteSize];
+								palettesOffset + (paletteIndex * paletteSize) + paletteSize];
 		while (h < maxHeight)
 		{
 			w = 0;
