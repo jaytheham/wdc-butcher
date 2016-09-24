@@ -288,9 +288,8 @@ class CarRenderer : Renderer
 			curTexture.setWrapS(GL_CLAMP_TO_EDGE);
 			curTexture.setWrapT(GL_CLAMP_TO_EDGE);
 		}
-		else
+		else // wheels
 		{
-			// wheels
 			curTexture.setWrapS(GL_MIRRORED_REPEAT);
 			curTexture.setWrapT(GL_MIRRORED_REPEAT);
 		}
@@ -314,11 +313,11 @@ class CarRenderer : Renderer
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
 		int modelBlockOffset = data.readInt(pointerOffset);
 		int verticesOffset = data.readInt(modelBlockOffset);
-		//int vertexCount = peek!int(data[modelBlockOffset + 4 .. modelBlockOffset + 8]);
+		//int vertexCount = data.readInt(modelBlockOffset + 4);
 		int polygonOffset = data.readInt(modelBlockOffset + 8);
 		int polygonCount = data.readInt(modelBlockOffset + 12);
 		int normalsOffset = data.readInt(modelBlockOffset + 0x20);
-		//int normalsCount = peek!int(data[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
+		//int normalsCount = data.readInt(modelBlockOffset + 0x24);
 
 		if (modelBlockOffset == 0) {
 			return;
@@ -340,30 +339,19 @@ class CarRenderer : Renderer
 			n3 = data.readUshort(polygonOffset + 0x1c);
 			n4 = data.readUshort(polygonOffset + 0x1e);
 
-			if (v4 == 0xffff) // One triangle
-			{
-				curVertOffset = verticesOffset + v1 * 6;
-				curNormalOffset = normalsOffset + n1 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
-				curVertOffset = verticesOffset + v2 * 6;
-				curNormalOffset = normalsOffset + n2 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
-				curVertOffset = verticesOffset + v3 * 6;
-				curNormalOffset = normalsOffset + n3 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
-			}
-			else // Two Triangles
-			{
-				curVertOffset = verticesOffset + v1 * 6;
-				curNormalOffset = normalsOffset + n1 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
-				curVertOffset = verticesOffset + v2 * 6;
-				curNormalOffset = normalsOffset + n2 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
-				curVertOffset = verticesOffset + v3 * 6;
-				curNormalOffset = normalsOffset + n3 * 3;
-				vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
+			// One triangle
+			curVertOffset = verticesOffset + v1 * 6;
+			curNormalOffset = normalsOffset + n1 * 3;
+			vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
+			curVertOffset = verticesOffset + v2 * 6;
+			curNormalOffset = normalsOffset + n2 * 3;
+			vertices ~= getVertex(curVertOffset, polygonOffset, 1, curNormalOffset);
+			curVertOffset = verticesOffset + v3 * 6;
+			curNormalOffset = normalsOffset + n3 * 3;
+			vertices ~= getVertex(curVertOffset, polygonOffset, 2, curNormalOffset);
 
+			if (v4 != 0xffff) // Two Triangles
+			{
 				curVertOffset = verticesOffset + v1 * 6;
 				curNormalOffset = normalsOffset + n1 * 3;
 				vertices ~= getVertex(curVertOffset, polygonOffset, 0, curNormalOffset);
