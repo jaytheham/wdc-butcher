@@ -27,6 +27,11 @@ long readLong(ubyte[] source, int location)
 	return peek!long(source[location..location + 8]);
 }
 
+ulong readULong(ubyte[] source, int location)
+{
+	return peek!ulong(source[location..location + 8]);
+}
+
 float readFloat(ubyte[] source, int location)
 {
 	//writefln("__%x", location);

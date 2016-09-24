@@ -40,8 +40,8 @@ class Track : Drawable
 		renderer = new TrackRenderer(this, openglInstance);
 	}
 
-	void draw(Camera cam)
+	void draw(Camera cam, char[] keys)
 	{
-		renderer.draw(cam);
+		renderer.draw(cam, keys);
 	}
 }

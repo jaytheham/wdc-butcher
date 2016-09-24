@@ -90,7 +90,7 @@ void main(string[] args)
 			handleInput(sdl2);
 
 			//test.drawTriangles(basicCamera);
-			selectedObject.draw(basicCamera);
+			selectedObject.draw(basicCamera, getKeys(sdl2));
 
 			window.swapBuffers();
 			Thread.sleep(TimeKeeper.uSecsUntilNextFrame().usecs);
@@ -100,6 +100,20 @@ void main(string[] args)
 			handleCommands();
 		}
 	}
+}
+
+private char[] getKeys(SDL2 sdl2)
+{
+	char[] keys;
+	if (sdl2.keyboard.testAndRelease(SDLK_1))
+	{
+		keys ~= '1';
+	}
+	if (sdl2.keyboard.testAndRelease(SDLK_2))
+	{
+		keys ~= '2';
+	}
+	return keys;
 }
 
 private Binary getWDCBinary(string[] args)
@@ -157,26 +171,6 @@ private void handleCommands()
 
 private void handleInput(SDL2 sdl2)
 {
-	if (cast(Car)selectedObject)
-	{
-		if (sdl2.keyboard.testAndRelease(SDLK_COMMA))
-		{
-			(cast(Car)selectedObject).prevModelBlock();
-		}
-		if (sdl2.keyboard.testAndRelease(SDLK_PERIOD))
-		{
-			(cast(Car)selectedObject).nextModelBlock();
-		}
-		if (sdl2.keyboard.testAndRelease(SDLK_SEMICOLON))
-		{
-			(cast(Car)selectedObject).prevPalette();
-		}
-		if (sdl2.keyboard.testAndRelease(SDLK_QUOTE))
-		{
-			(cast(Car)selectedObject).nextPalette();
-		}
-	}
-
 	if (sdl2.keyboard.testAndRelease(SDLK_p))
 	{
 		mode = mode == GL_FILL ? GL_LINE : GL_FILL;
@@ -286,9 +280,9 @@ private bool writeHelp(string[] args)
 
 private void setupCommands()
 {
-	commands ~= UserCommand("lc", "--list-cars", "List car names and indices", "lc", &listCars);
-	commands ~= UserCommand("lt", "--list-tracks", "List track names and indices", "lt", &listTracks);
-	commands ~= UserCommand("dc", "--display-car", "Display car {index}", "dc {intCarIndex}",
+	commands ~= UserCommand("lc", "list-cars", "List car names and indices", "lc", &listCars);
+	commands ~= UserCommand("lt", "list-tracks", "List track names and indices", "lt", &listTracks);
+	commands ~= UserCommand("dc", "display-car", "Display car {index}", "dc {intCarIndex}",
 		(string[] args) {
 			if (args.length == 2)
 			{
@@ -322,9 +316,9 @@ private void setupCommands()
 			}
 			return false;
 		});
-	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data {offset}");
-	commands ~= UserCommand("ec", "--extract-car", "Extract car {index} data");
-	commands ~= UserCommand("et", "--extract-track", "Extract track {index} {variation} data");
-	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
-	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
+	commands ~= UserCommand("e", "extract", "Extract and inflate zlib data {offset}");
+	commands ~= UserCommand("ec", "extract-car", "Extract car {index} data");
+	commands ~= UserCommand("et", "extract-track", "Extract track {index} {variation} data");
+	commands ~= UserCommand("h", "help", "Display all available commands", "", &writeHelp);
+	commands ~= UserCommand("v", "version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
 }

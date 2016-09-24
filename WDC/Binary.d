@@ -20,7 +20,7 @@ class Binary
 {
 
 private:
-	
+
 	enum RegionType { PAL, NTSC };
 	enum assetsStringOffset = 0xc00;
 
@@ -52,7 +52,7 @@ public:
 		binary.length = cast(uint)binaryHandle.size;
 		binaryHandle.rawRead(binary);
 		binaryHandle.close();
-		
+
 		enforceBigEndian();
 
 		region = binary[0x3e] == 'E' ? RegionType.NTSC : RegionType.PAL;
@@ -71,8 +71,8 @@ public:
 		while(binary[carAssetsOffset[region] + offset] == 0x80)
 		{
 			nameOffset = peek!int(binary[carAssetsOffset[region] + offset
-										 ..
-										 carAssetsOffset[region] + offset + 4])
+			                             ..
+			                             carAssetsOffset[region] + offset + 4])
 						 + assetsStringOffset;
 			nameOffset &= 0x0fffffff;
 			nameSize = 0;
@@ -94,13 +94,14 @@ public:
 		int palettesAOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
 		int palettesBOffset = peek!int(binary[carAssetOffset + 0x2C..carAssetOffset + 0x30]);
 		int palettesCOffset = peek!int(binary[carAssetOffset + 0x34..carAssetOffset + 0x38]);
-		
+
+		//write(format("%.2d car main zlib", carIndex), decompressZlibBlock(dataBlobOffset));
 		return new Car(decompressZlibBlock(dataBlobOffset),
-						decompressZlibBlock(textureBlobOffset),
-						// assuming palettes are always 0x100 in size ...
-						binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * carPaletteSize)],
-						binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * carPaletteSize)],
-						binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * carPaletteSize)]);
+		               decompressZlibBlock(textureBlobOffset),
+		               // assuming palettes are always 0x100 in size ...
+		               binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * carPaletteSize)],
+		               binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * carPaletteSize)],
+		               binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * carPaletteSize)]);
 	}
 
 	char[][] getTrackList()
@@ -142,12 +143,12 @@ public:
 		// From here is fnc_34c84:
 		// Collision sections
 		fnc_334f8(newTrack, trackVariation, firstZlibEnd);
-		
+
 		// Track sections
 		fnc_3373c(newTrack, trackVariation, firstZlibEnd);
 
 		//fnc_33a18(data, trackVariation, firstZlibEnd);
-		
+
 		// Next four blocks are handled by the same function
 		//// 0x68 Offset to null data that is turned into pointers to the inflated zlibs (is it??)
 		//// 0x6c Count of words at above
@@ -267,7 +268,7 @@ public:
 			zlibIndex = readShort(curTrackData, indicesLocation + (i * 2));
 			zlibOffset = readInt(curTrackData, zlibOffsetTable + (zlibIndex * 12));
 			info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
-			
+
 			newTrack.addBinaryCollisionSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
 			//curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset); // JAL function_0x2200
 			//write(format("u %d", i), decompressZlibBlock(firstZlibEnd + zlibOffset));
@@ -304,7 +305,7 @@ public:
 			zlibIndex = readShort(curTrackData, indicesLocation + (i * 2));
 			zlibOffset = readInt(curTrackData, zlibOffsetTable + (zlibIndex * 12));
 			curTrackData ~= decompressZlibBlock(firstZlibEnd + zlibOffset);
-			
+
 			//curTrackData.writeInt(0x34 + (zlibIndex * 4), curTrackData.readInt(zlibOffsetTable + (zlibIndex * 0x12) + 8));
 			int info_offset = curTrackData.readInt(zlibOffsetTable + (zlibIndex * 12) + 8);
 			newTrack.addBinaryTrackSection(decompressZlibBlock(firstZlibEnd + zlibOffset), info_offset);
@@ -453,7 +454,7 @@ public:
 		}
 		// Here's where the s4 / t2 loop that does nothing (?) goes
 		fnc_34a08(data, info_offset);
-		
+
 		int spa8;
 		int spb0 = data.readInt(info_offset + 0x10); // first zlib pointer?
 		int last_zlib_end = cur_zlib_offset; // spac
@@ -766,7 +767,7 @@ public:
 
 		return output;
 	}
-	
+
 	// replaceCar
 	// replaceTrack
 	// deleteCar?

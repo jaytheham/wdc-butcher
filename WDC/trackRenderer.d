@@ -179,7 +179,7 @@ class TrackRenderer : Renderer
 		}
 	}
 
-	void draw(Camera cam)
+	void draw(Camera cam, char[] args)
 	{
 		program.uniform("mvpMatrix").set(cam.getPVM(model));
 		program.use();

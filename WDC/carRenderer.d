@@ -4,8 +4,11 @@ import camera,
 	   gfm.math,
 	   gfm.opengl,
 	   wdc.car,
+	   wdc.tools,
 	   wdc.renderer;
 import std.stdio,
+	   std.format,
+	   std.file,
 	   std.bitmanip;
 
 class CarRenderer : Renderer
@@ -50,7 +53,7 @@ class CarRenderer : Renderer
 		GLBuffer[numCarParts] carVBOs;
 		Vertex[][numCarParts] carVertices;
 
-		ubyte[] dataBlob;
+		ubyte[] data;
 	}
 
 	this(Car source, OpenGL openglInstance)
@@ -61,14 +64,12 @@ class CarRenderer : Renderer
 
 		vs = new VertexSpecification!Vertex(program);
 
-		dataBlob = source.dataBlob;
+		data = source.data;
 
 		insertPalettes(source.palettes1);
 		insertTextures(source.textures);
 
-		while (peek!int(dataBlob[modelBlockPointerOffset + (numModelBlocks * 0x10)
-		                         ..
-		                         modelBlockPointerOffset + (numModelBlocks * 0x10) + 4]) > 0)
+		while (data.readInt(modelBlockPointerOffset + (numModelBlocks * 0x10)) > 0)
 		{
 			numModelBlocks++;
 		}
@@ -76,8 +77,9 @@ class CarRenderer : Renderer
 		setupBuffers();
 	}
 
-	void draw(Camera camera)
+	void draw(Camera camera, char[] args)
 	{
+		parseInput(args);
 		if (modelBlockIndex == -1)
 		{
 			program.uniform("textureSampler").set(0);
@@ -108,6 +110,17 @@ class CarRenderer : Renderer
 		}
 	}
 
+	private void loadModelData()
+	{
+		loadVertices(partVertices, modelBlockIndex);
+		loadTexture(partTextureBytes, modelBlockIndex);
+
+		if (partVertices.length < 3)
+		{
+			writeln("NOTE: Too few vertices defined to draw anything");
+		}
+	}
+
 	private void insertPalettes(ubyte[] palettes)
 	{
 		void insertPalette(int destinationOffset, ubyte[] replacementData)
@@ -119,7 +132,7 @@ class CarRenderer : Renderer
 			int i = 0;
 			while (destinationOffset + i < endOffset)
 			{
-				dataBlob[destinationOffset + i] = replacementData[i];
+				data[destinationOffset + i] = replacementData[i];
 				i++;
 			}
 		}
@@ -132,7 +145,7 @@ class CarRenderer : Renderer
 
 		while (palettePointerOffset < endPalettePointers)
 		{
-			paletteOffset = peek!int(dataBlob[palettePointerOffset..palettePointerOffset + 4]);
+			paletteOffset = peek!int(data[palettePointerOffset..palettePointerOffset + 4]);
 			assert(paletteOffset != 0, "This car has less than 8 inserted palettes?");
 
 			insertPalette(paletteOffset, palettes[paletteNum * 0x20..(paletteNum * 0x20) + 0x20]);
@@ -141,8 +154,8 @@ class CarRenderer : Renderer
 			paletteNum++;
 		}
 
-		palettesOffset = peek!int(dataBlob[0..4]) + 4; // Correct ??
-		while (peek!int(dataBlob[palettesOffset + (paletteSize * numPalettes)
+		palettesOffset = peek!int(data[0..4]) + 4; // Correct ??
+		while (peek!int(data[palettesOffset + (paletteSize * numPalettes)
 								..
 								palettesOffset + (paletteSize * numPalettes) + 4]) != 0)
 		{
@@ -157,14 +170,14 @@ class CarRenderer : Renderer
 			int endOffset = sourceOffset + size;
 			while (sourceOffset < endOffset)
 			{
-				dataBlob[destinationOffset] = textures[sourceOffset];
+				data[destinationOffset] = textures[sourceOffset];
 				sourceOffset++;
 				destinationOffset++;
 			}
 		}
 		
-		int textureDescriptorTableOffset = peek!int(dataBlob[0xb4..0xb8]);
-		int textureCount = peek!int(dataBlob[0xb8..0xbc]);
+		int textureDescriptorTableOffset = peek!int(data[0xb4..0xb8]);
+		int textureCount = peek!int(data[0xb8..0xbc]);
 		int curTextureNum = 0;
 
 		int textureDescriptorOffset;
@@ -174,13 +187,13 @@ class CarRenderer : Renderer
 
 		while (curTextureNum < textureCount)
 		{
-			textureDescriptorOffset = peek!int(dataBlob[textureDescriptorTableOffset + curTextureNum * 4
+			textureDescriptorOffset = peek!int(data[textureDescriptorTableOffset + curTextureNum * 4
 													..
 													textureDescriptorTableOffset + 4 + curTextureNum * 4]);
-			textureDestination = peek!int(dataBlob[textureDescriptorOffset + 4
+			textureDestination = peek!int(data[textureDescriptorOffset + 4
 												..
 												textureDescriptorOffset + 8]);
-			textureSize = peek!int(dataBlob[textureDescriptorOffset + 0x14
+			textureSize = peek!int(data[textureDescriptorOffset + 0x14
 										..
 										textureDescriptorOffset + 0x18]);
 			textureSize = (((textureSize >> 0xc) & 0xfff) << 1) + 2;
@@ -214,12 +227,56 @@ class CarRenderer : Renderer
 		}
 	}
 
+	private void parseInput(char[] keys)
+	{
+		foreach(key; keys)
+		{
+			if (key == '1')
+			{
+				setModelBlock(modelBlockIndex - 1);
+			}
+			else if (key == '2')
+			{
+				setModelBlock(modelBlockIndex + 1);
+			}
+		}
+	}
+
+	void setModelBlock(int newblockNum)
+	{
+		if (newblockNum < -1)
+		{
+			modelBlockIndex = numModelBlocks - 1;
+		}
+		else if (newblockNum >= numModelBlocks)
+		{
+			modelBlockIndex = -1;
+		}
+		else
+		{
+			modelBlockIndex = newblockNum;
+		}
+
+		if (modelBlockIndex != -1)
+		{
+			loadModelData();
+			updateBuffers();
+		}
+	}
+
+	void updateBuffers()
+	{
+		partVBO.setData(partVertices[]);
+		setupTextures(partTexture, partTextureBytes);
+	}
+
 	private void setupTextures(ref GLTexture2D curTexture, ref ubyte[] textureBytes)
 	{
 		//if (curTexture)
 		//{
 		//	delete curTexture;
 		//}
+		//std.file.write(format("car tex #%.2X.raw", modelBlockIndex), textureBytes);
 		curTexture = new GLTexture2D(openGL);
 		curTexture.setMinFilter(GL_LINEAR);
 		curTexture.setMagFilter(GL_LINEAR);
@@ -233,24 +290,28 @@ class CarRenderer : Renderer
 	{
 		Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum, int normalOffset)
 		{
-			return Vertex(vec3i(peek!short(dataBlob[vertexOffset + 2..vertexOffset + 4]),
-			                    peek!short(dataBlob[vertexOffset + 4..vertexOffset + 6]),
-			                    peek!short(dataBlob[vertexOffset    ..vertexOffset + 2])),
-			              vec2f(cast(byte)dataBlob[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
-			                    cast(byte)dataBlob[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
-			              vec3i(cast(int)cast(byte)dataBlob[normalOffset + 1],
-			                    cast(int)cast(byte)dataBlob[normalOffset + 2],
-			                    cast(int)cast(byte)dataBlob[normalOffset]));
+			return Vertex(vec3i(peek!short(data[vertexOffset + 2..vertexOffset + 4]),
+			                    peek!short(data[vertexOffset + 4..vertexOffset + 6]),
+			                    peek!short(data[vertexOffset    ..vertexOffset + 2])),
+			              vec2f(cast(byte)data[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
+			                    cast(byte)data[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
+			              vec3i(cast(int)cast(byte)data[normalOffset + 1],
+			                    cast(int)cast(byte)data[normalOffset + 2],
+			                    cast(int)cast(byte)data[normalOffset]));
 		}
 		
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
-		int modelBlockOffset = peek!int(dataBlob[pointerOffset..pointerOffset + 4]);
-		int verticesOffset = peek!int(dataBlob[modelBlockOffset + 0 .. modelBlockOffset + 4]);
-		//int vertexCount = peek!int(dataBlob[modelBlockOffset + 4 .. modelBlockOffset + 8]);
-		int polygonOffset = peek!int(dataBlob[modelBlockOffset + 8 .. modelBlockOffset + 12]);
-		int polygonCount = peek!int(dataBlob[modelBlockOffset + 12 .. modelBlockOffset + 16]);
-		int normalsOffset = peek!int(dataBlob[modelBlockOffset + 0x20 .. modelBlockOffset + 0x24]);
-		//int normalsCount = peek!int(dataBlob[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
+		int modelBlockOffset = peek!int(data[pointerOffset..pointerOffset + 4]);
+		int verticesOffset = peek!int(data[modelBlockOffset + 0 .. modelBlockOffset + 4]);
+		//int vertexCount = peek!int(data[modelBlockOffset + 4 .. modelBlockOffset + 8]);
+		int polygonOffset = peek!int(data[modelBlockOffset + 8 .. modelBlockOffset + 12]);
+		int polygonCount = peek!int(data[modelBlockOffset + 12 .. modelBlockOffset + 16]);
+		int normalsOffset = peek!int(data[modelBlockOffset + 0x20 .. modelBlockOffset + 0x24]);
+		//int normalsCount = peek!int(data[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
+
+		if (modelBlockOffset == 0) {
+			return;
+		}
 		
 		vertices.length = 0;
 		ushort v1, v2, v3, v4, n1, n2, n3, n4;
@@ -258,15 +319,15 @@ class CarRenderer : Renderer
 
 		while (polygonCount > 0)
 		{
-			v1 = peek!ushort(dataBlob[polygonOffset + 8 .. polygonOffset + 10]);
-			v2 = peek!ushort(dataBlob[polygonOffset + 10 .. polygonOffset + 12]);
-			v3 = peek!ushort(dataBlob[polygonOffset + 12 .. polygonOffset + 14]);
-			v4 = peek!ushort(dataBlob[polygonOffset + 14 .. polygonOffset + 16]);
+			v1 = peek!ushort(data[polygonOffset + 8 .. polygonOffset + 10]);
+			v2 = peek!ushort(data[polygonOffset + 10 .. polygonOffset + 12]);
+			v3 = peek!ushort(data[polygonOffset + 12 .. polygonOffset + 14]);
+			v4 = peek!ushort(data[polygonOffset + 14 .. polygonOffset + 16]);
 
-			n1 = peek!ushort(dataBlob[polygonOffset + 0x18 .. polygonOffset + 0x1a]);
-			n2 = peek!ushort(dataBlob[polygonOffset + 0x1a .. polygonOffset + 0x1c]);
-			n3 = peek!ushort(dataBlob[polygonOffset + 0x1c .. polygonOffset + 0x1e]);
-			n4 = peek!ushort(dataBlob[polygonOffset + 0x1e .. polygonOffset + 0x20]);
+			n1 = peek!ushort(data[polygonOffset + 0x18 .. polygonOffset + 0x1a]);
+			n2 = peek!ushort(data[polygonOffset + 0x1a .. polygonOffset + 0x1c]);
+			n3 = peek!ushort(data[polygonOffset + 0x1c .. polygonOffset + 0x1e]);
+			n4 = peek!ushort(data[polygonOffset + 0x1e .. polygonOffset + 0x20]);
 
 			if (v4 == 0xffff) // One triangle
 			{
@@ -342,33 +403,33 @@ class CarRenderer : Renderer
 
 		texBytes.length = 0;
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
-		int modelBlockOffset = peek!int(dataBlob[pointerOffset..pointerOffset + 4]);
-		int polygonOffset = peek!int(dataBlob[modelBlockOffset + 8 .. modelBlockOffset + 12]);
-		int polygonCount = peek!int(dataBlob[modelBlockOffset + 12 .. modelBlockOffset + 16]);
-		if (polygonCount <= 0)
+		int modelBlockOffset = peek!int(data[pointerOffset..pointerOffset + 4]);
+		int polygonOffset = peek!int(data[modelBlockOffset + 8 .. modelBlockOffset + 12]);
+		int polygonCount = peek!int(data[modelBlockOffset + 12 .. modelBlockOffset + 16]);
+		if (polygonCount <= 0 || modelBlockOffset == 0)
 		{
 			return;
 		}
-		int textureNum = dataBlob[polygonOffset + 4];
+		int textureNum = data[polygonOffset + 4];
 		// use modelBlockIndex to index into the first lot of texture descriptor pointers
-		int textureCmdPointers = peek!int(dataBlob[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
+		int textureCmdPointers = peek!int(data[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
 		int textureCmdPointer = textureCmdPointers + textureNum * 4;
-		int textureCmdOffset = peek!int(dataBlob[textureCmdPointer..textureCmdPointer + 4]);
+		int textureCmdOffset = peek!int(data[textureCmdPointer..textureCmdPointer + 4]);
 
-		int textureOffset = peek!int(dataBlob[textureCmdOffset + 4..textureCmdOffset + 8]);
+		int textureOffset = peek!int(data[textureCmdOffset + 4..textureCmdOffset + 8]);
 
 		int maxWidth = textureWidth / 2;
 		int maxHeight = textureHeight;
 		
 		ubyte[] textureIndices;
 		textureIndices.length = maxWidth * maxHeight;
-		textureIndices[] = dataBlob[textureOffset..textureOffset + textureIndices.length];
+		textureIndices[] = data[textureOffset..textureOffset + textureIndices.length];
 		straightenIndices(textureIndices, maxWidth, maxHeight);
 		// TODO: how the func does it decide which palette to use?
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = dataBlob[palettesOffset + paletteIndex * paletteSize
+		auto palette = data[palettesOffset + paletteIndex * paletteSize
 								..
 								palettesOffset + paletteIndex * paletteSize + paletteSize];
 		while (h < maxHeight)
