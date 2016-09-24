@@ -145,7 +145,7 @@ class CarRenderer : Renderer
 
 		while (palettePointerOffset < endPalettePointers)
 		{
-			paletteOffset = peek!int(data[palettePointerOffset..palettePointerOffset + 4]);
+			paletteOffset = data.readInt(palettePointerOffset);
 			assert(paletteOffset != 0, "This car has less than 8 inserted palettes?");
 
 			insertPalette(paletteOffset, palettes[paletteNum * 0x20..(paletteNum * 0x20) + 0x20]);
@@ -185,15 +185,9 @@ class CarRenderer : Renderer
 
 		while (curTextureNum < textureCount)
 		{
-			textureDescriptorOffset = peek!int(data[textureDescriptorTableOffset + curTextureNum * 4
-													..
-													textureDescriptorTableOffset + 4 + curTextureNum * 4]);
-			textureDestination = peek!int(data[textureDescriptorOffset + 4
-												..
-												textureDescriptorOffset + 8]);
-			textureSize = peek!int(data[textureDescriptorOffset + 0x14
-										..
-										textureDescriptorOffset + 0x18]);
+			textureDescriptorOffset = data.readInt(textureDescriptorTableOffset + curTextureNum * 4);
+			textureDestination = data.readInt(textureDescriptorOffset + 4);
+			textureSize = data.readInt(textureDescriptorOffset + 0x14);
 			textureSize = (((textureSize >> 0xc) & 0xfff) << 1) + 2;
 
 			insertTexture(textureDestination, sourcePosition, textureSize);
@@ -307,9 +301,9 @@ class CarRenderer : Renderer
 	{
 		Vertex getVertex(int vertexOffset, int polygonOffset, int vertNum, int normalOffset)
 		{
-			return Vertex(vec3i(peek!short(data[vertexOffset + 2..vertexOffset + 4]),
-			                    peek!short(data[vertexOffset + 4..vertexOffset + 6]),
-			                    peek!short(data[vertexOffset    ..vertexOffset + 2])),
+			return Vertex(vec3i(data.readShort(vertexOffset + 2),
+			                    data.readShort(vertexOffset + 4),
+			                    data.readShort(vertexOffset)),
 			              vec2f(cast(byte)data[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
 			                    cast(byte)data[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
 			              vec3i(cast(int)cast(byte)data[normalOffset + 1],
@@ -318,12 +312,12 @@ class CarRenderer : Renderer
 		}
 		
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
-		int modelBlockOffset = peek!int(data[pointerOffset..pointerOffset + 4]);
-		int verticesOffset = peek!int(data[modelBlockOffset + 0 .. modelBlockOffset + 4]);
+		int modelBlockOffset = data.readInt(pointerOffset);
+		int verticesOffset = data.readInt(modelBlockOffset);
 		//int vertexCount = peek!int(data[modelBlockOffset + 4 .. modelBlockOffset + 8]);
-		int polygonOffset = peek!int(data[modelBlockOffset + 8 .. modelBlockOffset + 12]);
-		int polygonCount = peek!int(data[modelBlockOffset + 12 .. modelBlockOffset + 16]);
-		int normalsOffset = peek!int(data[modelBlockOffset + 0x20 .. modelBlockOffset + 0x24]);
+		int polygonOffset = data.readInt(modelBlockOffset + 8);
+		int polygonCount = data.readInt(modelBlockOffset + 12);
+		int normalsOffset = data.readInt(modelBlockOffset + 0x20);
 		//int normalsCount = peek!int(data[modelBlockOffset + 0x24 .. modelBlockOffset + 0x28]);
 
 		if (modelBlockOffset == 0) {
@@ -336,15 +330,15 @@ class CarRenderer : Renderer
 
 		while (polygonCount > 0)
 		{
-			v1 = peek!ushort(data[polygonOffset + 8 .. polygonOffset + 10]);
-			v2 = peek!ushort(data[polygonOffset + 10 .. polygonOffset + 12]);
-			v3 = peek!ushort(data[polygonOffset + 12 .. polygonOffset + 14]);
-			v4 = peek!ushort(data[polygonOffset + 14 .. polygonOffset + 16]);
+			v1 = data.readUshort(polygonOffset + 8);
+			v2 = data.readUshort(polygonOffset + 10);
+			v3 = data.readUshort(polygonOffset + 12);
+			v4 = data.readUshort(polygonOffset + 14);
 
-			n1 = peek!ushort(data[polygonOffset + 0x18 .. polygonOffset + 0x1a]);
-			n2 = peek!ushort(data[polygonOffset + 0x1a .. polygonOffset + 0x1c]);
-			n3 = peek!ushort(data[polygonOffset + 0x1c .. polygonOffset + 0x1e]);
-			n4 = peek!ushort(data[polygonOffset + 0x1e .. polygonOffset + 0x20]);
+			n1 = data.readUshort(polygonOffset + 0x18);
+			n2 = data.readUshort(polygonOffset + 0x1a);
+			n3 = data.readUshort(polygonOffset + 0x1c);
+			n4 = data.readUshort(polygonOffset + 0x1e);
 
 			if (v4 == 0xffff) // One triangle
 			{
@@ -420,19 +414,19 @@ class CarRenderer : Renderer
 
 		texBytes.length = 0;
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
-		int modelBlockOffset = peek!int(data[pointerOffset..pointerOffset + 4]);
-		int polygonOffset = peek!int(data[modelBlockOffset + 8 .. modelBlockOffset + 12]);
-		int polygonCount = peek!int(data[modelBlockOffset + 12 .. modelBlockOffset + 16]);
+		int modelBlockOffset = data.readInt(pointerOffset);
+		int polygonOffset = data.readInt(modelBlockOffset + 8);
+		int polygonCount = data.readInt(modelBlockOffset + 12);
 		if (polygonCount <= 0 || modelBlockOffset == 0)
 		{
 			return;
 		}
 		int textureNum = data[polygonOffset + 4];
-		int textureCmdPointers = peek!int(data[textureCMDPointersOffset..textureCMDPointersOffset + 4]);
+		int textureCmdPointers = data.readInt(textureCMDPointersOffset);
 		int textureCmdPointer = textureCmdPointers + modelIndex * 4;
-		int textureCmdOffset = peek!int(data[textureCmdPointer..textureCmdPointer + 4]);
+		int textureCmdOffset = data.readInt(textureCmdPointer);
 
-		int textureOffset = peek!int(data[textureCmdOffset + 4..textureCmdOffset + 8]);
+		int textureOffset = data.readInt(textureCmdOffset + 4);
 
 		int maxWidth = textureWidth / 2;
 		int maxHeight = textureHeight;
