@@ -19,7 +19,7 @@ import wdc.car,
 class Binary
 {
 
-private:
+//private:
 
 	enum RegionType { PAL, NTSC };
 	enum assetsStringOffset = 0xc00;

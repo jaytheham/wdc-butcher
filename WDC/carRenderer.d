@@ -64,10 +64,10 @@ class CarRenderer : Renderer
 
 		vs = new VertexSpecification!Vertex(program);
 
-		data = source.data;
+		data = source.binaryData;
 
-		insertPalettes(source.palettes1);
-		insertTextures(source.textures);
+		insertPalettes(source.binaryPalettes1);
+		insertTextures(source.binaryTextures);
 
 		while (data.readInt(modelBlockPointerOffset + (numModelBlocks * 0x10)) > 0)
 		{
