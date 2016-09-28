@@ -53,13 +53,11 @@ private
 
 void testing()
 {
-	ubyte[] input;
-	File binaryHandle = File("input", "r");
-	input.length = cast(uint)binaryHandle.size;
-	binaryHandle.rawRead(input);
-	binaryHandle.close();
-
-	std.file.write("output deflated", compress(input, 9));
+	foreach (i, carname; binaryFile.getCarList())
+	{
+		writeln(carname);
+		binaryFile.getCar(i);
+	}
 }
 
 void main(string[] args)
@@ -67,8 +65,6 @@ void main(string[] args)
 	writeln("World Driver Championship for N64 viewer");
 	writeln("Created by jaytheham @ gmail.com");
 	writeln("--------------------------------\n");
-
-	//testing();
 
 	binaryFile = getWDCBinary(args);
 
@@ -81,6 +77,8 @@ void main(string[] args)
 	window.hide();
 
 	setOpenGLState();
+
+	//testing();
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)WINDOW_WIDTH / WINDOW_HEIGHT);
 	setupCommands();
@@ -262,6 +260,19 @@ private void displayCar(int index)
 	writeln("Press Escape to return to command window");
 }
 
+private bool extractCarObj(string[] args)
+{
+	try
+	{
+		binaryFile.getCar(parse!int(args[1])).outputWavefrontObj();
+	}
+	catch (ConvException e)
+	{
+		return false;
+	}
+	return true;
+}
+
 private bool listTracks(string[] args)
 {
 	writeln("\nIndex\tTrack Name");
@@ -339,8 +350,9 @@ private void setupCommands()
 			return false;
 		});
 	commands ~= UserCommand("e", "extract", "Extract and inflate zlib data {offset}");
-	commands ~= UserCommand("ec", "extract-car", "Extract car {index} data");
-	commands ~= UserCommand("et", "extract-track", "Extract track {index} {variation} data");
+	commands ~= UserCommand("ecb", "extract-car-binary", "Extract car {index} binary data");
+	commands ~= UserCommand("eco", "extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
+	commands ~= UserCommand("etb", "extract-track", "Extract track {index} {variation} binary data");
 	commands ~= UserCommand("h", "help", "Display all available commands", "", &writeHelp);
 	commands ~= UserCommand("v", "version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
 }

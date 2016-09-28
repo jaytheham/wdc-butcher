@@ -26,6 +26,7 @@ class Car : Drawable
 
 		float unknown1;
 		float carCameraYOffset;
+		// Both these are Z X Y
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
 		uint[] modelToTextureMap;
@@ -55,16 +56,16 @@ class Car : Drawable
 
 		struct Vertex
 		{
-			short Z;
-			short X;
-			short Y;
+			short z;
+			short x;
+			short y;
 		}
 
 		struct Normal
 		{
-			byte Z;
-			byte X;
-			byte Y;
+			byte z;
+			byte x;
+			byte y;
 		}
 
 		struct ModelSection
@@ -81,8 +82,8 @@ class Car : Drawable
 
 		struct TextureCoordinate
 		{
-			byte U;
-			byte V;
+			byte u;
+			byte v;
 		}
 	}
 
@@ -96,14 +97,14 @@ class Car : Drawable
 
 		unknown1 = binaryData.readFloat(0x8);
 		carCameraYOffset = binaryData.readFloat(0xC);
-		wheelOrigins = [vec3f(binaryData.readFloat(0x14),binaryData.readFloat(0x18),binaryData.readFloat(0x1C)),
-		                vec3f(binaryData.readFloat(0x20),binaryData.readFloat(0x24),binaryData.readFloat(0x28)),
-		                vec3f(binaryData.readFloat(0x2C),binaryData.readFloat(0x30),binaryData.readFloat(0x34)),
-		                vec3f(binaryData.readFloat(0x38),binaryData.readFloat(0x3C),binaryData.readFloat(0x40))];
-		lightOrigins = [vec3f(binaryData.readFloat(0x44),binaryData.readFloat(0x48),binaryData.readFloat(0x4C)),
-		                vec3f(binaryData.readFloat(0x50),binaryData.readFloat(0x54),binaryData.readFloat(0x58)),
-		                vec3f(binaryData.readFloat(0x5C),binaryData.readFloat(0x60),binaryData.readFloat(0x64)),
-		                vec3f(binaryData.readFloat(0x68),binaryData.readFloat(0x6C),binaryData.readFloat(0x70))];
+		wheelOrigins = [vec3f(binaryData.readFloat(0x18),binaryData.readFloat(0x1C),binaryData.readFloat(0x14)),
+		                vec3f(binaryData.readFloat(0x24),binaryData.readFloat(0x28),binaryData.readFloat(0x20)),
+		                vec3f(binaryData.readFloat(0x30),binaryData.readFloat(0x34),binaryData.readFloat(0x2C)),
+		                vec3f(binaryData.readFloat(0x3C),binaryData.readFloat(0x40),binaryData.readFloat(0x38))];
+		lightOrigins = [vec3f(binaryData.readFloat(0x48),binaryData.readFloat(0x4C),binaryData.readFloat(0x44)),
+		                vec3f(binaryData.readFloat(0x54),binaryData.readFloat(0x58),binaryData.readFloat(0x50)),
+		                vec3f(binaryData.readFloat(0x60),binaryData.readFloat(0x64),binaryData.readFloat(0x5C)),
+		                vec3f(binaryData.readFloat(0x6C),binaryData.readFloat(0x70),binaryData.readFloat(0x68))];
 
 		parseBinaryTextures();
 
@@ -124,6 +125,59 @@ class Car : Drawable
 	void draw(Camera camera, char[] keys)
 	{
 		renderer.draw(camera, keys);
+	}
+
+	void outputWavefrontObj()
+	{
+		//string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
+		// "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br", "door_l", "door_r",
+		//  "windows_l", "windows_r", "spoiler", "undercarriage", "_1", "headlight_l", "headlight_r",
+		//   "taillight_l", "taillight_r", "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3",];
+		File output = File("car.obj", "w");
+		int vOffest = 1;
+		output.writeln("o wheel_origins");
+		output.writeln("v ", wheelOrigins[0].x, " ", wheelOrigins[0].y, " ", wheelOrigins[0].z);
+		output.writeln("v ", wheelOrigins[1].x, " ", wheelOrigins[1].y, " ", wheelOrigins[1].z);
+		output.writeln("v ", wheelOrigins[2].x, " ", wheelOrigins[2].y, " ", wheelOrigins[2].z);
+		output.writeln("v ", wheelOrigins[3].x, " ", wheelOrigins[3].y, " ", wheelOrigins[3].z);
+		output.writeln("l 1 2 3 4 1");
+		vOffest += 4;
+
+		output.writeln("o light_origins");
+		output.writeln("v ", lightOrigins[0].x, " ", lightOrigins[0].y, " ", lightOrigins[0].z);
+		output.writeln("v ", lightOrigins[1].x, " ", lightOrigins[1].y, " ", lightOrigins[1].z);
+		output.writeln("v ", lightOrigins[2].x, " ", lightOrigins[2].y, " ", lightOrigins[2].z);
+		output.writeln("v ", lightOrigins[3].x, " ", lightOrigins[3].y, " ", lightOrigins[3].z);
+		output.writeln("l ", vOffest, " ", vOffest + 1, " ", vOffest + 2, " ", vOffest + 3, " ", vOffest);
+		vOffest += 4;
+
+		foreach (mIndex, currentModel; models)
+		{
+			foreach (vIndex; 0..currentModel.vertices.length)
+			{
+				output.writeln("v ", currentModel.vertices[vIndex].x / 256.0, " ",
+				                     currentModel.vertices[vIndex].y / 256.0, " ",
+				                     currentModel.vertices[vIndex].z / 256.0);
+			}
+
+			foreach (sIndex, ms; currentModel.modelSections)
+			{
+				output.writeln("o ", mIndex, "_", sIndex);
+				foreach (i; 0..ms.polygons.length)
+				{
+					output.writeln("f ", ms.polygons[i].vertexIndices[0] + vOffest, " ",
+					                     ms.polygons[i].vertexIndices[1] + vOffest, " ",
+					                     ms.polygons[i].vertexIndices[2] + vOffest);
+					if (ms.polygons[i].vertexIndices[3] != 0xFFFF)
+					{
+						output.writeln("f ", ms.polygons[i].vertexIndices[0] + vOffest, " ",
+						                     ms.polygons[i].vertexIndices[2] + vOffest, " ",
+						                     ms.polygons[i].vertexIndices[3] + vOffest);
+					}
+				}
+			}
+			vOffest += currentModel.vertices.length;
+		}
 	}
 
 	private void parseBinaryTextures()
@@ -208,8 +262,14 @@ class Car : Drawable
 		int verticesPointer = 0, normalsPointer, polygonsPointer, verticesCount, normalsCount, polygonsCount;
 		Model currentModel;
 		ModelSection currentModelSection;
-		while(modelSectionPointer != 0)
+		while (modelSectionPointer != 0)
 		{
+			if (binaryData.readInt(modelSectionPointer) == modelSectionPointer)
+			{
+				nextModelSectionPointerSource += 0x10;
+				modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
+				continue;
+			}
 			if (binaryData.readInt(modelSectionPointer) != verticesPointer)
 			{
 				verticesPointer = binaryData.readInt(modelSectionPointer);
@@ -217,8 +277,7 @@ class Car : Drawable
 				normalsPointer  = binaryData.readInt(modelSectionPointer + 32);
 				normalsCount    = binaryData.readInt(modelSectionPointer + 36);
 
-				models ~= Model(new Vertex[verticesCount], new Normal[normalsCount]);
-				currentModel = models[$ - 1];
+				currentModel = Model(new Vertex[verticesCount], new Normal[normalsCount]);
 
 				foreach(i; 0..verticesCount)
 				{
@@ -232,12 +291,11 @@ class Car : Drawable
 					                                 cast(byte)binaryData[normalsPointer + 1 + (i * 3)],
 					                                 cast(byte)binaryData[normalsPointer + 2 + (i * 3)]);
 				}
+				models ~= currentModel;
 			}
 			polygonsPointer = binaryData.readInt(modelSectionPointer + 8);
 			polygonsCount   = binaryData.readInt(modelSectionPointer + 12);
-
-			currentModel.modelSections ~= ModelSection(new Polygon[polygonsCount]);
-			currentModelSection = currentModel.modelSections[$ - 1];
+			currentModelSection = ModelSection(new Polygon[polygonsCount]);
 			foreach (i; 0..polygonsCount)
 			{
 				currentModelSection.polygons[i] = Polygon([binaryData.readUshort(polygonsPointer + 8  + (i * 0x20)),
@@ -254,9 +312,11 @@ class Car : Drawable
 				                                           binaryData.readUshort(polygonsPointer + 30 + (i * 0x20))]
 				                                         );
 			}
+			models[$ - 1].modelSections ~= currentModelSection;
 
 			nextModelSectionPointerSource += 0x10;
 			modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
 		}
+		writeln(models.length);
 	}
 }
