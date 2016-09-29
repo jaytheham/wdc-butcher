@@ -129,54 +129,135 @@ class Car : Drawable
 
 	void outputWavefrontObj()
 	{
-		//string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
-		// "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br", "door_l", "door_r",
-		//  "windows_l", "windows_r", "spoiler", "undercarriage", "_1", "headlight_l", "headlight_r",
-		//   "taillight_l", "taillight_r", "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3",];
+		import std.conv;
+		const string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
+		                            "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br",
+		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "_1",
+		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
+		                            "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3"];
+		outputTextures();
 		File output = File("car.obj", "w");
-		int vOffest = 1;
+		int normalOffset = 1;
+		int vertexOffest = 1;
+		int uvOffset = 1;
+		output.writeln("mtllib car.mtl");
 		output.writeln("o wheel_origins");
 		output.writeln("v ", wheelOrigins[0].x, " ", wheelOrigins[0].y, " ", wheelOrigins[0].z);
 		output.writeln("v ", wheelOrigins[1].x, " ", wheelOrigins[1].y, " ", wheelOrigins[1].z);
 		output.writeln("v ", wheelOrigins[2].x, " ", wheelOrigins[2].y, " ", wheelOrigins[2].z);
 		output.writeln("v ", wheelOrigins[3].x, " ", wheelOrigins[3].y, " ", wheelOrigins[3].z);
 		output.writeln("l 1 2 3 4 1");
-		vOffest += 4;
+		vertexOffest += 4;
 
 		output.writeln("o light_origins");
 		output.writeln("v ", lightOrigins[0].x, " ", lightOrigins[0].y, " ", lightOrigins[0].z);
 		output.writeln("v ", lightOrigins[1].x, " ", lightOrigins[1].y, " ", lightOrigins[1].z);
 		output.writeln("v ", lightOrigins[2].x, " ", lightOrigins[2].y, " ", lightOrigins[2].z);
 		output.writeln("v ", lightOrigins[3].x, " ", lightOrigins[3].y, " ", lightOrigins[3].z);
-		output.writeln("l ", vOffest, " ", vOffest + 1, " ", vOffest + 2, " ", vOffest + 3, " ", vOffest);
-		vOffest += 4;
+		output.writeln("l ", vertexOffest, " ", vertexOffest + 1, " ", vertexOffest + 2, " ", vertexOffest + 3, " ", vertexOffest);
+		vertexOffest += 4;
 
+		bool hasNormals;
 		foreach (mIndex, currentModel; models)
 		{
-			foreach (vIndex; 0..currentModel.vertices.length)
+			foreach (vertex; currentModel.vertices)
 			{
-				output.writeln("v ", currentModel.vertices[vIndex].x / 256.0, " ",
-				                     currentModel.vertices[vIndex].y / 256.0, " ",
-				                     currentModel.vertices[vIndex].z / 256.0);
+				output.writeln("v ", vertex.x / 256.0, " ",
+				                     vertex.y / 256.0, " ",
+				                     vertex.z / 256.0);
+			}
+			
+			foreach (normal; currentModel.normals)
+			{
+				output.writeln("vn ", normal.x / 127.0, " ",
+				                      normal.y / 127.0, " ",
+				                      normal.z / 127.0);
 			}
 
 			foreach (sIndex, ms; currentModel.modelSections)
 			{
-				output.writeln("o ", mIndex, "_", sIndex);
-				foreach (i; 0..ms.polygons.length)
+				if (mIndex == 0)
 				{
-					output.writeln("f ", ms.polygons[i].vertexIndices[0] + vOffest, " ",
-					                     ms.polygons[i].vertexIndices[1] + vOffest, " ",
-					                     ms.polygons[i].vertexIndices[2] + vOffest);
-					if (ms.polygons[i].vertexIndices[3] != 0xFFFF)
+					output.writeln("usemtl ", modelToTextureMap[sIndex]);
+					output.writefln("o %.2d_%.2d_%s", mIndex, sIndex, partNames[sIndex]);
+				}
+				else
+				{
+					// TODO material for later models
+					output.writefln("o %.2d_%.2d", mIndex, sIndex);
+				}
+				hasNormals = currentModel.normals.length > 0;
+				foreach (polygon; ms.polygons)
+				{
+					foreach (uvi, uv; polygon.textureCoordinates)
 					{
-						output.writeln("f ", ms.polygons[i].vertexIndices[0] + vOffest, " ",
-						                     ms.polygons[i].vertexIndices[2] + vOffest, " ",
-						                     ms.polygons[i].vertexIndices[3] + vOffest);
+						output.writeln("vt ", uv.u / 80.0, " ", uv.v / 38.0);
 					}
+					output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
+					                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
+
+					                     polygon.vertexIndices[1] + vertexOffest, "/-3/",
+					                     hasNormals ? to!string(polygon.normalIndices[1] + normalOffset) : "", " ",
+
+					                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
+					                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "");
+					if (polygon.vertexIndices[3] != 0xFFFF)
+					{
+						output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
+						                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
+
+						                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
+						                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "", " ",
+
+						                     polygon.vertexIndices[3] + vertexOffest, "/-1/",
+						                     hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
+					}
+					uvOffset += 4;
 				}
 			}
-			vOffest += currentModel.vertices.length;
+			normalOffset += currentModel.normals.length;
+			vertexOffest += currentModel.vertices.length;
+		}
+	}
+
+	void outputTextures()
+	{
+		byte width = 80, height = 38;
+		byte[] header = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
+		                 width,0,0,0, height,0,0,0, 1,0, 16,0, 0,0,0,0,
+		                 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+		// THIS isn't working because these textures aren't inserted with the fixed textures!
+		const ubyte[] modelSectionToPaletteMap = [0, 0, 0, 1, 0, 1, 0, 0, // last is back, 0?
+		                                          0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, // last 2 are undercarriage and _1 0?
+		                                          4, 4, // 6 for lights on
+		                                          6, 6, // 8 for lights on
+		                                          1, 1, 0, 0, 0, 0]; // last 4 are roof ornament and the LoDs 0?
+		File materialLib = File("car.mtl", "w");
+
+		foreach (textureNum, texture; bodyTextures)
+		{
+			if (texture.length != (width * height) / 2)
+			{
+				continue;
+			}
+			materialLib.writeln("newmtl ", textureNum);
+			materialLib.writeln("illum 0");
+			materialLib.writeln(format("map_Kd -clamp on .\\car%.2d.bmp", textureNum));
+			File output = File(format("car%.2d.bmp", textureNum), "wb");
+			output.rawWrite(header);
+			for (int i = 0; i < ((width * height) / 2); i += 2)
+			{
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 1)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 9)]);
+				
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 1)]);
+				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 9)]);
+			}
+			output.close();
 		}
 	}
 
@@ -193,14 +274,18 @@ class Car : Drawable
 		int texturePosition = 0;
 
 		bodyTextures.length = textureDescriptorCount;
-
+		
 		foreach(index; 0..textureDescriptorCount)
 		{
 			descriptorLocation = binaryData.readInt(textureDescriptorPointers + (index * 4));
 			textureSize = (((binaryData.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
 			bodyTextures[index] = binaryTextures[texturePosition..texturePosition + textureSize];
+			if (textureSize > 8)
+			{
+				straightenIndices(bodyTextures[index], 40, 38);
+			}
 			texturePosition += textureSize;
-
+			
 			foreach(mIndex; 0..bodyModelTextureCount)
 			{
 				if (binaryData.readInt(bodyModelTexturePointers + (mIndex * 4)) == descriptorLocation)
@@ -213,7 +298,37 @@ class Car : Drawable
 		// always the same as the last four from the main lot, so can just copy them
 	}
 
-	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] destination)
+	void straightenIndices(ref ubyte[] rawIndices, int bytesWide, int height)
+		{
+			// Word swap the odd rows
+			int w = 0, h = 0;
+			ubyte[4] tempBytes;
+			int byteNum;
+			int curOffset;
+			
+			assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
+
+			while (h < height)
+			{
+				if (h % 2 == 1)
+				{
+					byteNum = 0;
+					curOffset = h * bytesWide;
+					while (byteNum < bytesWide)
+					{
+						tempBytes[] = rawIndices[curOffset + byteNum..curOffset + byteNum + 4];
+						rawIndices[curOffset + byteNum..curOffset + byteNum + 4] = 
+							rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8];
+						rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
+
+						byteNum += 8;
+					}
+				}
+				h++;
+			}
+		}
+
+	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, ref Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] destination)
 	{
 		foreach(index; 0..(PALETTE_COLOUR_COUNT * PALETTE_COUNT))
 		{
@@ -317,6 +432,5 @@ class Car : Drawable
 			nextModelSectionPointerSource += 0x10;
 			modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
 		}
-		writeln(models.length);
 	}
 }
