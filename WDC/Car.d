@@ -35,6 +35,7 @@ class Car : Drawable
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesA;
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesB;
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesC;
+		int[PALETTE_COUNT] insertedPalettePointers;
 		Model[] models;
 
 		union Colour
@@ -135,7 +136,7 @@ class Car : Drawable
 		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "_1",
 		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
 		                            "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3"];
-		outputTextures();
+		outputTextures(fixedPalettes.dup, palettesA);
 		File output = File("car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
@@ -220,18 +221,24 @@ class Car : Drawable
 		}
 	}
 
-	void outputTextures()
+	void outputTextures(Colour[][] allPalettes, Colour[PALETTE_COLOUR_COUNT][] insertedPalettes)
 	{
 		byte width = 80, height = 38;
 		byte[] header = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
 		                 width,0,0,0, height,0,0,0, 1,0, 16,0, 0,0,0,0,
 		                 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 		// THIS isn't working because these textures aren't inserted with the fixed textures!
-		const ubyte[] modelSectionToPaletteMap = [0, 0, 0, 1, 0, 1, 0, 0, // last is back, 0?
-		                                          0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, // last 2 are undercarriage and _1 0?
-		                                          4, 4, // 6 for lights on
-		                                          6, 6, // 8 for lights on
-		                                          1, 1, 0, 0, 0, 0]; // last 4 are roof ornament and the LoDs 0?
+		const ubyte[] textureToPaletteMap = [0, 0, 0, 2, 0,
+		                                     2, 0, 0, 0, 0,
+		                                     0, 0, 2, 0, 4,
+		                                     5, 7, 2, 2, 0,
+		                                     0, 0, 4, 4, 4, 4];
+		
+		foreach (i, palette; insertedPalettes)
+		{
+			allPalettes[insertedPalettePointers[i]] = palette.dup;
+		}
+		
 		File materialLib = File("car.mtl", "w");
 
 		foreach (textureNum, texture; bodyTextures)
@@ -247,15 +254,15 @@ class Car : Drawable
 			output.rawWrite(header);
 			for (int i = 0; i < ((width * height) / 2); i += 2)
 			{
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 1)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 9)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 1)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 9)]);
 				
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 1)]);
-				output.rawWrite([cast(byte)(palettesA[modelSectionToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 9)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 1)]);
+				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 9)]);
 			}
 			output.close();
 		}
@@ -338,7 +345,6 @@ class Car : Drawable
 
 	private void parseBinaryFixedPalettes()
 	{
-		int[PALETTE_COUNT] insertedPalettePointers;
 		int palettePointerPointer = 0x7C;
 
 		foreach(i; 0..PALETTE_COUNT)
@@ -367,6 +373,11 @@ class Car : Drawable
 			{
 				break;
 			}
+		}
+		// set pointers relative to palette block index
+		foreach(i; 0..PALETTE_COUNT)
+		{
+			insertedPalettePointers[i] = (insertedPalettePointers[i] - 0x398) / 0x20;
 		}
 	}
 
