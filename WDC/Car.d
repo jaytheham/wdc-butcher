@@ -35,7 +35,7 @@ class Car : Drawable
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesA;
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesB;
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesC;
-		int[PALETTE_COUNT] insertedPalettePointers;
+		int[PALETTE_COUNT] insertedPaletteIndices;
 		Model[] models;
 
 		union Colour
@@ -184,7 +184,7 @@ class Car : Drawable
 				}
 				else
 				{
-					// TODO material for later models
+					output.writeln("usemtl ", 22 + sIndex);
 					output.writefln("o %.2d_%.2d", mIndex, sIndex);
 				}
 				hasNormals = currentModel.normals.length > 0;
@@ -223,49 +223,53 @@ class Car : Drawable
 
 	void outputTextures(Colour[][] allPalettes, Colour[PALETTE_COLOUR_COUNT][] insertedPalettes)
 	{
-		byte width = 80, height = 38;
-		byte[] header = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
-		                 width,0,0,0, height,0,0,0, 1,0, 16,0, 0,0,0,0,
-		                 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
-		// THIS isn't working because these textures aren't inserted with the fixed textures!
-		const ubyte[] textureToPaletteMap = [0, 0, 0, 2, 0,
-		                                     2, 0, 0, 0, 0,
-		                                     0, 0, 2, 0, 4,
-		                                     5, 7, 2, 2, 0,
-		                                     0, 0, 4, 4, 4, 4];
+		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
+		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
+
+		const byte[] bmpHeader = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
+		                          TEXTURE_WIDTH,0,0,0, TEXTURE_HEIGHT,0,0,0, 1,0, 16,0,
+		                          0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+
+		const ubyte[] textureToPaletteMap = [0, 0, 0, 2, 0, 2, 0, 0, 0, 0,
+		                                     0, 0, 1, 0, 4, 5, 7, 1, 1, 0,
+		                                     0, 0, 4, 4, 4, 4, 0, 0, 0, 0];
 		
 		foreach (i, palette; insertedPalettes)
 		{
-			allPalettes[insertedPalettePointers[i]] = palette.dup;
+			allPalettes[insertedPaletteIndices[i]] = palette.dup;
 		}
 		
-		File materialLib = File("car.mtl", "w");
-
+		File materialLibraryFile = File("car.mtl", "w");
+		Colour[] curPalette;
+		
 		foreach (textureNum, texture; bodyTextures)
 		{
-			if (texture.length != (width * height) / 2)
+			if (texture.length != TEXTURE_SIZE_BYTES)
 			{
 				continue;
 			}
-			materialLib.writeln("newmtl ", textureNum);
-			materialLib.writeln("illum 0");
-			materialLib.writeln(format("map_Kd -clamp on .\\car%.2d.bmp", textureNum));
-			File output = File(format("car%.2d.bmp", textureNum), "wb");
-			output.rawWrite(header);
-			for (int i = 0; i < ((width * height) / 2); i += 2)
+			materialLibraryFile.writeln("newmtl ", textureNum);
+			materialLibraryFile.writeln("illum 0");
+			materialLibraryFile.writeln(format("map_Kd -clamp on .\\car%.2d.bmp", textureNum));
+			
+			File textureFile = File(format("car%.2d.bmp", textureNum), "wb");
+			textureFile.rawWrite(bmpHeader);
+			curPalette = allPalettes[textureToPaletteMap[textureNum]];
+			for (int i = 0; i < TEXTURE_SIZE_BYTES; i += 2)
 			{
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 1)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i] & 0xf].whole >>> 9)]);
+				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
+				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
+				textureFile.rawWrite([cast(byte)(curPalette[texture[i] & 0xf].whole >>> 1)]);
+				textureFile.rawWrite([cast(byte)(curPalette[texture[i] & 0xf].whole >>> 9)]);
 				
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 1)]);
-				output.rawWrite([cast(byte)(allPalettes[textureToPaletteMap[textureNum]][texture[i + 1] & 0xf].whole >>> 9)]);
+				textureFile.rawWrite([cast(byte)(curPalette[(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
+				textureFile.rawWrite([cast(byte)(curPalette[(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
+				textureFile.rawWrite([cast(byte)(curPalette[texture[i + 1] & 0xf].whole >>> 1)]);
+				textureFile.rawWrite([cast(byte)(curPalette[texture[i + 1] & 0xf].whole >>> 9)]);
 			}
-			output.close();
+			textureFile.close();
 		}
+		materialLibraryFile.close();
 	}
 
 	private void parseBinaryTextures()
@@ -289,7 +293,7 @@ class Car : Drawable
 			bodyTextures[index] = binaryTextures[texturePosition..texturePosition + textureSize];
 			if (textureSize > 8)
 			{
-				straightenIndices(bodyTextures[index], 40, 38);
+				wordSwapOddRows(bodyTextures[index], 40, 38);
 			}
 			texturePosition += textureSize;
 			
@@ -305,35 +309,28 @@ class Car : Drawable
 		// always the same as the last four from the main lot, so can just copy them
 	}
 
-	void straightenIndices(ref ubyte[] rawIndices, int bytesWide, int height)
+	private void wordSwapOddRows(ref ubyte[] rawTexture, int bytesWide, int textureHeight)
+	{
+		ubyte[4] tempBytes;
+		int curOffset;
+		
+		assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
+
+		for (int row = 0; row < textureHeight; row++)
 		{
-			// Word swap the odd rows
-			int w = 0, h = 0;
-			ubyte[4] tempBytes;
-			int byteNum;
-			int curOffset;
-			
-			assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
-
-			while (h < height)
+			if (row % 2 == 1)
 			{
-				if (h % 2 == 1)
+				curOffset = row * bytesWide;
+				for (int byteNum = 0; byteNum < bytesWide; byteNum += 8)
 				{
-					byteNum = 0;
-					curOffset = h * bytesWide;
-					while (byteNum < bytesWide)
-					{
-						tempBytes[] = rawIndices[curOffset + byteNum..curOffset + byteNum + 4];
-						rawIndices[curOffset + byteNum..curOffset + byteNum + 4] = 
-							rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8];
-						rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
-
-						byteNum += 8;
-					}
+					tempBytes[] = rawTexture[curOffset + byteNum..curOffset + byteNum + 4];
+					rawTexture[curOffset + byteNum..curOffset + byteNum + 4] = 
+						rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8];
+					rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
 				}
-				h++;
 			}
 		}
+	}
 
 	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, ref Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] destination)
 	{
@@ -349,7 +346,7 @@ class Car : Drawable
 
 		foreach(i; 0..PALETTE_COUNT)
 		{
-			insertedPalettePointers[i] = binaryData.readInt(palettePointerPointer);
+			insertedPaletteIndices[i] = binaryData.readInt(palettePointerPointer);
 			palettePointerPointer += 4;
 		}
 
@@ -364,7 +361,7 @@ class Car : Drawable
 					fixedPalettes[$ - 1][i] = Colour(binaryData.readUshort(palettePointer + (i * 2)));
 				}
 			}
-			else if (canFind(insertedPalettePointers[], palettePointer))
+			else if (canFind(insertedPaletteIndices[], palettePointer))
 			{
 				// inserted palette
 				fixedPalettes ~= null;
@@ -377,7 +374,7 @@ class Car : Drawable
 		// set pointers relative to palette block index
 		foreach(i; 0..PALETTE_COUNT)
 		{
-			insertedPalettePointers[i] = (insertedPalettePointers[i] - 0x398) / 0x20;
+			insertedPaletteIndices[i] = (insertedPaletteIndices[i] - 0x398) / 0x20;
 		}
 	}
 
@@ -424,19 +421,24 @@ class Car : Drawable
 			currentModelSection = ModelSection(new Polygon[polygonsCount]);
 			foreach (i; 0..polygonsCount)
 			{
-				currentModelSection.polygons[i] = Polygon([binaryData.readUshort(polygonsPointer + 8  + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 10 + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 12 + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 14 + (i * 0x20))],
-				                                          [TextureCoordinate(cast(byte)binaryData[polygonsPointer + 16 + (i * 0x20)], cast(byte)binaryData[polygonsPointer + 17 + (i * 0x20)]),
-				                                           TextureCoordinate(cast(byte)binaryData[polygonsPointer + 18 + (i * 0x20)], cast(byte)binaryData[polygonsPointer + 19 + (i * 0x20)]),
-				                                           TextureCoordinate(cast(byte)binaryData[polygonsPointer + 20 + (i * 0x20)], cast(byte)binaryData[polygonsPointer + 21 + (i * 0x20)]),
-				                                           TextureCoordinate(cast(byte)binaryData[polygonsPointer + 22 + (i * 0x20)], cast(byte)binaryData[polygonsPointer + 23 + (i * 0x20)])],
-				                                          [binaryData.readUshort(polygonsPointer + 24 + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 26 + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 28 + (i * 0x20)),
-				                                           binaryData.readUshort(polygonsPointer + 30 + (i * 0x20))]
-				                                         );
+				currentModelSection.polygons[i] =
+					Polygon([binaryData.readUshort(polygonsPointer + 8  + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 10 + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 12 + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 14 + (i * 0x20))],
+                            [TextureCoordinate(cast(byte)binaryData[polygonsPointer + 16 + (i * 0x20)],
+                            	               cast(byte)binaryData[polygonsPointer + 17 + (i * 0x20)]),
+                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 18 + (i * 0x20)],
+                             	               cast(byte)binaryData[polygonsPointer + 19 + (i * 0x20)]),
+                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 20 + (i * 0x20)],
+                             	               cast(byte)binaryData[polygonsPointer + 21 + (i * 0x20)]),
+                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 22 + (i * 0x20)],
+                             	               cast(byte)binaryData[polygonsPointer + 23 + (i * 0x20)])],
+                            [binaryData.readUshort(polygonsPointer + 24 + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 26 + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 28 + (i * 0x20)),
+                             binaryData.readUshort(polygonsPointer + 30 + (i * 0x20))]
+                           );
 			}
 			models[$ - 1].modelSections ~= currentModelSection;
 

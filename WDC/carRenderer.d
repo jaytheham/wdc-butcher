@@ -370,36 +370,6 @@ class CarRenderer : Renderer
 
 	private void loadTexture(ref ubyte[] texBytes, int modelIndex)
 	{
-		void straightenIndices(ubyte[] rawIndices, int bytesWide, int height)
-		{
-			// Word swap the odd rows
-			int w = 0, h = 0;
-			ubyte[4] tempBytes;
-			int byteNum;
-			int curOffset;
-			
-			assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
-
-			while (h < height)
-			{
-				if (h % 2 == 1)
-				{
-					byteNum = 0;
-					curOffset = h * bytesWide;
-					while (byteNum < bytesWide)
-					{
-						tempBytes[] = rawIndices[curOffset + byteNum..curOffset + byteNum + 4];
-						rawIndices[curOffset + byteNum..curOffset + byteNum + 4] = 
-							rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8];
-						rawIndices[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
-
-						byteNum += 8;
-					}
-				}
-				h++;
-			}
-		}
-
 		texBytes.length = 0;
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
 		int modelBlockOffset = data.readInt(pointerOffset);
@@ -422,7 +392,6 @@ class CarRenderer : Renderer
 		ubyte[] textureIndices;
 		textureIndices.length = maxWidth * maxHeight;
 		textureIndices[] = data[textureOffset..textureOffset + textureIndices.length];
-		straightenIndices(textureIndices, maxWidth, maxHeight);
 		// TODO: how the func does it decide which palette to use?
 
 		int w = 0, h = 0;

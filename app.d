@@ -265,9 +265,11 @@ private bool extractCarObj(string[] args)
 	try
 	{
 		binaryFile.getCar(parse!int(args[1])).outputWavefrontObj();
+		writeln("Car ", parse!int(args[1]), " extracted to .obj file.");
 	}
 	catch (ConvException e)
 	{
+		writeln(e.msg);
 		return false;
 	}
 	return true;
