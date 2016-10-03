@@ -30,6 +30,7 @@ class Car : Drawable
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
 		uint[] modelToTextureMap;
+		uint[] textureToModelMap;
 		ubyte[][] bodyTextures;
 		Colour[][] fixedPalettes;
 		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesA;
@@ -136,7 +137,7 @@ class Car : Drawable
 		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "_1",
 		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
 		                            "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3"];
-		outputTextures(fixedPalettes.dup, palettesA);
+		outputTextures(palettesA);
 		File output = File("car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
@@ -221,7 +222,7 @@ class Car : Drawable
 		}
 	}
 
-	void outputTextures(Colour[][] allPalettes, Colour[PALETTE_COLOUR_COUNT][] insertedPalettes)
+	void outputTextures(Colour[PALETTE_COLOUR_COUNT][] palettes)
 	{
 		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
@@ -229,15 +230,8 @@ class Car : Drawable
 		const byte[] bmpHeader = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
 		                          TEXTURE_WIDTH,0,0,0, TEXTURE_HEIGHT,0,0,0, 1,0, 16,0,
 		                          0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
-
-		const ubyte[] textureToPaletteMap = [0, 0, 0, 2, 0, 2, 0, 0, 0, 0,
-		                                     0, 0, 1, 0, 4, 5, 7, 1, 1, 0,
-		                                     0, 0, 4, 4, 4, 4, 0, 0, 0, 0];
-		
-		foreach (i, palette; insertedPalettes)
-		{
-			allPalettes[insertedPaletteIndices[i]] = palette.dup;
-		}
+		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
+		                         0,1,2,4,4,6,6,1,1,1,3,3,3,3,2,2,2,2,2,2];
 		
 		File materialLibraryFile = File("car.mtl", "w");
 		Colour[] curPalette;
@@ -254,7 +248,7 @@ class Car : Drawable
 			
 			File textureFile = File(format("car%.2d.bmp", textureNum), "wb");
 			textureFile.rawWrite(bmpHeader);
-			curPalette = allPalettes[textureToPaletteMap[textureNum]];
+			curPalette = palettes[modelToPalMap[textureToModelMap[textureNum]]];
 			for (int i = 0; i < TEXTURE_SIZE_BYTES; i += 2)
 			{
 				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
@@ -277,6 +271,7 @@ class Car : Drawable
 		int bodyModelTexturePointers = binaryData.readInt(0xA0);
 		int bodyModelTextureCount = binaryData.readInt(0xA8);
 		modelToTextureMap.length = bodyModelTextureCount;
+		textureToModelMap.length = bodyModelTextureCount;
 
 		int textureDescriptorPointers = binaryData.readInt(0xB4);
 		int textureDescriptorCount = binaryData.readInt(0xB8);
@@ -302,6 +297,7 @@ class Car : Drawable
 				if (binaryData.readInt(bodyModelTexturePointers + (mIndex * 4)) == descriptorLocation)
 				{
 					modelToTextureMap[mIndex] = index;
+					textureToModelMap[index] = mIndex;
 				}
 			}
 		}

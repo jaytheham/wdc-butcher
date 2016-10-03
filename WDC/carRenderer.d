@@ -54,6 +54,8 @@ class CarRenderer : Renderer
 		Vertex[][numCarParts] carVertices;
 
 		ubyte[] data;
+
+		Car src;
 	}
 
 	this(Car source, OpenGL openglInstance)
@@ -61,6 +63,7 @@ class CarRenderer : Renderer
 		openGL = openglInstance;
 		program = createShader(openGL);
 		model = mat4f.identity();
+		src = source;
 
 		vs = new VertexSpecification!Vertex(program);
 
@@ -392,13 +395,12 @@ class CarRenderer : Renderer
 		ubyte[] textureIndices;
 		textureIndices.length = maxWidth * maxHeight;
 		textureIndices[] = data[textureOffset..textureOffset + textureIndices.length];
-		// TODO: how the func does it decide which palette to use?
+		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
+		                         0,1,2,4,4,6,6,1,1,1,3,3,3,3,2,2,2,2,2,2];
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = data[palettesOffset + (paletteIndex * paletteSize)
-								..
-								palettesOffset + (paletteIndex * paletteSize) + paletteSize];
+		auto palette = src.binaryPalettes1[(modelToPalMap[modelIndex] * 0x20)..(modelToPalMap[modelIndex] * 0x20) + 0x20];
 		while (h < maxHeight)
 		{
 			w = 0;
