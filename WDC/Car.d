@@ -21,8 +21,8 @@ class Car : Drawable
 	{
 		CarRenderer renderer;
 
-		enum PALETTE_COLOUR_COUNT = 0x10;
-		enum PALETTE_COUNT = 8;
+		enum COLOURS_PER_PALETTE = 0x10;
+		enum PALETTES_PER_SET = 8;
 
 		float unknown1;
 		float carCameraYOffset;
@@ -30,13 +30,12 @@ class Car : Drawable
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
 		uint[] modelToTextureMap;
-		uint[] textureToModelMap;
 		ubyte[][] bodyTextures;
 		Colour[][] fixedPalettes;
-		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesA;
-		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesB;
-		Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] palettesC;
-		int[PALETTE_COUNT] insertedPaletteIndices;
+		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesA;
+		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesB;
+		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesC;
+		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[] models;
 
 		union Colour
@@ -143,6 +142,8 @@ class Car : Drawable
 			mkdir("output");
 		}
 		outputTextures(palettesA);
+		outputTextures(palettesB, 1);
+		outputTextures(palettesC, 2);
 		File output = File("output/car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
@@ -227,7 +228,7 @@ class Car : Drawable
 		}
 	}
 
-	void outputTextures(Colour[PALETTE_COLOUR_COUNT][] palettes)
+	private void outputTextures(Colour[COLOURS_PER_PALETTE][] palettes, int paletteSet = 0)
 	{
 		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
@@ -236,7 +237,7 @@ class Car : Drawable
 		                          TEXTURE_WIDTH,0,0,0, TEXTURE_HEIGHT,0,0,0, 1,0, 16,0,
 		                          0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,2,2,2,2];
+		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2];
 		
 		File materialLibraryFile = File("output/car.mtl", "w");
 		Colour[] curPalette;
@@ -258,7 +259,7 @@ class Car : Drawable
 			materialLibraryFile.writeln("illum 0");
 			materialLibraryFile.writeln(format("map_Kd -clamp on .\\car%.2d_%d.bmp", textureNum, alternate));
 			
-			File textureFile = File(format("output/car%.2d_%d.bmp", textureNum, alternate), "wb");
+			File textureFile = File(format("output/%d_car%.2d_%d.bmp", paletteSet, textureNum, alternate), "wb");
 			textureFile.rawWrite(bmpHeader);
 			curPalette = palettes[modelToPalMap[modelIndex]];
 			for (int i = 0; i < TEXTURE_SIZE_BYTES; i += 2)
@@ -280,15 +281,14 @@ class Car : Drawable
 
 	private void parseBinaryTextures()
 	{
-		int bodyModelTexturePointers = binaryData.readInt(0xA0);
-		int bodyModelTextureCount = binaryData.readInt(0xA8);
-		modelToTextureMap.length = bodyModelTextureCount;
-		textureToModelMap.length = bodyModelTextureCount;
+		int modelToTexturePointers = binaryData.readInt(0xA0);
+		int modelToTextureCount = binaryData.readInt(0xA8);
+		modelToTextureMap.length = modelToTextureCount;
 
 		int textureDescriptorPointers = binaryData.readInt(0xB4);
 		int textureDescriptorCount = binaryData.readInt(0xB8);
 		int descriptorLocation;
-		int textureSize;
+		int textureSizeInBytes;
 		int texturePosition = 0;
 
 		bodyTextures.length = textureDescriptorCount;
@@ -296,20 +296,19 @@ class Car : Drawable
 		foreach(index; 0..textureDescriptorCount)
 		{
 			descriptorLocation = binaryData.readInt(textureDescriptorPointers + (index * 4));
-			textureSize = (((binaryData.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
-			bodyTextures[index] = binaryTextures[texturePosition..texturePosition + textureSize];
-			if (textureSize > 8)
+			textureSizeInBytes = (((binaryData.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
+			bodyTextures[index] = binaryTextures[texturePosition..texturePosition + textureSizeInBytes];
+			if (textureSizeInBytes > 8)
 			{
 				wordSwapOddRows(bodyTextures[index], 40, 38);
 			}
-			texturePosition += textureSize;
+			texturePosition += textureSizeInBytes;
 			
-			foreach(mIndex; 0..bodyModelTextureCount)
+			foreach(mIndex; 0..modelToTextureCount)
 			{
-				if (binaryData.readInt(bodyModelTexturePointers + (mIndex * 4)) == descriptorLocation)
+				if (binaryData.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
 				{
 					modelToTextureMap[mIndex] = index;
-					textureToModelMap[index] = mIndex;
 				}
 			}
 		}
@@ -340,11 +339,11 @@ class Car : Drawable
 		}
 	}
 
-	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, ref Colour[PALETTE_COLOUR_COUNT][PALETTE_COUNT] destination)
+	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, ref Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] destination)
 	{
-		foreach(index; 0..(PALETTE_COLOUR_COUNT * PALETTE_COUNT))
+		foreach(index; 0..(COLOURS_PER_PALETTE * PALETTES_PER_SET))
 		{
-			destination[index / PALETTE_COLOUR_COUNT][index % PALETTE_COLOUR_COUNT] = Colour(binaryPaletteSource.readUshort(index * 2));
+			destination[index / COLOURS_PER_PALETTE][index % COLOURS_PER_PALETTE] = Colour(binaryPaletteSource.readUshort(index * 2));
 		}
 	}
 
@@ -352,7 +351,7 @@ class Car : Drawable
 	{
 		int palettePointerPointer = 0x7C;
 
-		foreach(i; 0..PALETTE_COUNT)
+		foreach(i; 0..PALETTES_PER_SET)
 		{
 			insertedPaletteIndices[i] = binaryData.readInt(palettePointerPointer);
 			palettePointerPointer += 4;
@@ -363,8 +362,8 @@ class Car : Drawable
 			if (binaryData.readInt(palettePointer) != 0)
 			{
 				// fixed palette
-				fixedPalettes ~= new Colour[PALETTE_COLOUR_COUNT];
-				foreach(i; 0..PALETTE_COLOUR_COUNT)
+				fixedPalettes ~= new Colour[COLOURS_PER_PALETTE];
+				foreach(i; 0..COLOURS_PER_PALETTE)
 				{
 					fixedPalettes[$ - 1][i] = Colour(binaryData.readUshort(palettePointer + (i * 2)));
 				}
@@ -380,7 +379,7 @@ class Car : Drawable
 			}
 		}
 		// set pointers relative to palette block index
-		foreach(i; 0..PALETTE_COUNT)
+		foreach(i; 0..PALETTES_PER_SET)
 		{
 			insertedPaletteIndices[i] = (insertedPaletteIndices[i] - 0x398) / 0x20;
 		}
