@@ -382,9 +382,10 @@ class CarRenderer : Renderer
 		{
 			return;
 		}
+		modelIndex = modelIndex < 0x1D ? modelIndex : 0x1E; // Wheel texture weirdness
 		int textureNum = data[polygonOffset + 4];
 		int textureCmdPointers = data.readInt(textureCMDPointersOffset);
-		int textureCmdPointer = textureCmdPointers + modelIndex * 4;
+		int textureCmdPointer = textureCmdPointers + (modelIndex * 4);
 		int textureCmdOffset = data.readInt(textureCmdPointer);
 
 		int textureOffset = data.readInt(textureCmdOffset + 4);

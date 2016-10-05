@@ -137,8 +137,13 @@ class Car : Drawable
 		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "_1",
 		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
 		                            "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3"];
+		// Wheels are in order: front L, front R, rear L, rear R
+		if (!exists("output") || !("output".isDir))
+		{
+			mkdir("output");
+		}
 		outputTextures(palettesA);
-		File output = File("car.obj", "w");
+		File output = File("output/car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
 		int uvOffset = 1;
@@ -231,24 +236,31 @@ class Car : Drawable
 		                          TEXTURE_WIDTH,0,0,0, TEXTURE_HEIGHT,0,0,0, 1,0, 16,0,
 		                          0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                         0,1,2,4,4,6,6,1,1,1,3,3,3,3,2,2,2,2,2,2];
+		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,2,2,2,2];
 		
-		File materialLibraryFile = File("car.mtl", "w");
+		File materialLibraryFile = File("output/car.mtl", "w");
 		Colour[] curPalette;
-		
-		foreach (textureNum, texture; bodyTextures)
+		ubyte[] texture;
+		int alternate;
+		foreach (modelIndex, textureNum; modelToTextureMap)
 		{
+			alternate = 0;
+			texture = bodyTextures[textureNum];
 			if (texture.length != TEXTURE_SIZE_BYTES)
 			{
 				continue;
 			}
+			if (modelIndex == 20 || modelIndex == 22)
+			{
+				alternate = 1;
+			}
 			materialLibraryFile.writeln("newmtl ", textureNum);
 			materialLibraryFile.writeln("illum 0");
-			materialLibraryFile.writeln(format("map_Kd -clamp on .\\car%.2d.bmp", textureNum));
+			materialLibraryFile.writeln(format("map_Kd -clamp on .\\car%.2d_%d.bmp", textureNum, alternate));
 			
-			File textureFile = File(format("car%.2d.bmp", textureNum), "wb");
+			File textureFile = File(format("output/car%.2d_%d.bmp", textureNum, alternate), "wb");
 			textureFile.rawWrite(bmpHeader);
-			curPalette = palettes[modelToPalMap[textureToModelMap[textureNum]]];
+			curPalette = palettes[modelToPalMap[modelIndex]];
 			for (int i = 0; i < TEXTURE_SIZE_BYTES; i += 2)
 			{
 				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
