@@ -23,6 +23,14 @@ class Car : Drawable
 
 		enum COLOURS_PER_PALETTE = 0x10;
 		enum PALETTES_PER_SET = 8;
+		enum OBJ_WHEEL_ID = "wheel_origins";
+		enum OBJ_LIGHT_ID = "light_origins";
+
+		const string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
+		                            "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br",
+		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "part_x",
+		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
+		                            "wingmirror_l", "wingmirror_r", "roof_ornament", "LoD1", "LoD2", "LoD3"];
 
 		float unknown1;
 		float carCameraYOffset;
@@ -118,6 +126,153 @@ class Car : Drawable
 		parseBinaryModels();
 	}
 
+	this(string objFilePath)
+	{
+		import std.string, std.conv;
+		
+		int currentModel, currentModelSection,
+		    vertexOffset, sectionVertexCount,
+		    normalOffset, sectionNormalCount,
+		    uvOffset;
+		string line, materialLibraryPath;
+		string[] lineParts;
+		TextureCoordinate[] sectionUvs;
+		string[][] faces;
+		File input = File(objFilePath, "r");
+		while((line = input.readln()) !is null)
+		{
+			line = chomp(line);
+			
+			if (line.startsWith("o "))
+			{
+				lineParts = split(line[2..$], "-");
+				if (lineParts[0] == OBJ_WHEEL_ID)
+				{
+					foreach (i; 0..4)
+					{
+						line = input.readln();
+						lineParts = split(line[2..$], " ");
+						wheelOrigins[i] = vec3f(parse!float(lineParts[2]), parse!float(lineParts[0]), parse!float(lineParts[1]));
+					}
+					vertexOffset += 4;
+				}
+				else if (lineParts[0] == OBJ_LIGHT_ID)
+				{
+					foreach (i; 0..4)
+					{
+						line = input.readln();
+						lineParts = split(line[2..$], " ");
+						lightOrigins[i] = vec3f(parse!float(lineParts[2]), parse!float(lineParts[0]), parse!float(lineParts[1]));
+					}
+					vertexOffset += 4;
+				}
+				else if (lineParts.length >= 2)
+				{
+					// TODO convert faces into polygons for current section here.
+					currentModel = parse!int(lineParts[0]);
+					currentModelSection = parse!int(lineParts[1]);
+					while (models.length <= currentModel)
+					{
+						models ~= Model();
+					}
+					while (models[currentModel].modelSections.length <= currentModelSection)
+					{
+						models[currentModel].modelSections ~= ModelSection();
+					}
+					vertexOffset += sectionVertexCount;
+					normalOffset += sectionNormalCount;
+					uvOffset += sectionUvs.length;
+					sectionNormalCount = 0;
+					sectionVertexCount = 0;
+
+					sectionUvs.length = 0;
+					faces.length = 0;
+				}
+			}
+			else if (line.startsWith("v "))
+			{
+				lineParts = split(line[2..$], " ");
+				models[currentModel].vertices ~= Vertex(
+					                                    cast(short)(parse!float(lineParts[2]) * 256),
+					                                    cast(short)(parse!float(lineParts[0]) * 256),
+					                                    cast(short)(parse!float(lineParts[1]) * 256)
+					                                   );
+				sectionVertexCount++;
+			}
+			else if (line.startsWith("vn "))
+			{
+				lineParts = split(line[3..$], " ");
+				models[currentModel].normals ~= Normal(
+					                                   cast(byte)(parse!float(lineParts[2]) * 127),
+					                                   cast(byte)(parse!float(lineParts[0]) * 127),
+					                                   cast(byte)(parse!float(lineParts[1]) * 127)
+					                                  );
+				sectionNormalCount++;
+			}
+			else if (line.startsWith("vt "))
+			{
+				lineParts = split(line[3..$], " ");
+				sectionUvs ~= TextureCoordinate(
+					                            cast(byte)(parse!float(lineParts[0]) * 80),
+					                            cast(byte)(parse!float(lineParts[1]) * 38)
+					                           );
+			}
+			else if (line.startsWith("f "))
+			{
+				lineParts = split(line[2..$], " ");
+				int found;
+				int newValue;
+				foreach (index, face; faces)
+				{
+					if (face.length == 3)
+					{
+						found = 0;
+						newValue = 3;
+						if (canFind(face, lineParts[0]))
+						{
+							found++;
+						}
+						if (canFind(face, lineParts[1]))
+						{
+							found++;
+							newValue -= 1;
+						}
+						if (canFind(face, lineParts[2]))
+						{
+							found++;
+							newValue -= 2;
+						}
+						if (found == 2)
+						{
+							faces[index] ~= lineParts[newValue];
+							break;
+						}
+					}
+				}
+				if (found != 2)
+				{
+					faces ~= lineParts;
+				}
+			}
+			else if (line.startsWith("usemtl "))
+			{
+				lineParts = split(line, " ");
+				int materialIndex = parse!int(lineParts[1]);
+				if (modelToTextureMap.length <= currentModelSection)
+				{
+					modelToTextureMap.length = currentModelSection + 1;
+				}
+				if (currentModel == 0)
+				{
+					modelToTextureMap[currentModelSection] = materialIndex;
+				}
+			}
+		}
+
+		input.close();
+		// convert to binary files
+	}
+
 	void setupDrawing(OpenGL opengl)
 	{
 		renderer = new CarRenderer(this, opengl);
@@ -131,11 +286,6 @@ class Car : Drawable
 	void outputWavefrontObj()
 	{
 		import std.conv;
-		const string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
-		                            "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br",
-		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "_1",
-		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
-		                            "wingmirror_l", "wingmirror_r", "roof_adornment", "LoD1", "LoD2", "LoD3"];
 		// Wheels are in order: front L, front R, rear L, rear R
 		if (!exists("output") || !("output".isDir))
 		{
@@ -149,7 +299,7 @@ class Car : Drawable
 		int vertexOffest = 1;
 		int uvOffset = 1;
 		output.writeln("mtllib car.mtl");
-		output.writeln("o wheel_origins");
+		output.writeln("o ", OBJ_WHEEL_ID);
 		output.writeln("v ", wheelOrigins[0].x, " ", wheelOrigins[0].y, " ", wheelOrigins[0].z);
 		output.writeln("v ", wheelOrigins[1].x, " ", wheelOrigins[1].y, " ", wheelOrigins[1].z);
 		output.writeln("v ", wheelOrigins[2].x, " ", wheelOrigins[2].y, " ", wheelOrigins[2].z);
@@ -157,7 +307,7 @@ class Car : Drawable
 		output.writeln("l 1 2 3 4 1");
 		vertexOffest += 4;
 
-		output.writeln("o light_origins");
+		output.writeln("o ", OBJ_LIGHT_ID);
 		output.writeln("v ", lightOrigins[0].x, " ", lightOrigins[0].y, " ", lightOrigins[0].z);
 		output.writeln("v ", lightOrigins[1].x, " ", lightOrigins[1].y, " ", lightOrigins[1].z);
 		output.writeln("v ", lightOrigins[2].x, " ", lightOrigins[2].y, " ", lightOrigins[2].z);
@@ -187,12 +337,12 @@ class Car : Drawable
 				if (mIndex == 0)
 				{
 					output.writeln("usemtl ", modelToTextureMap[sIndex]);
-					output.writefln("o %.2d_%.2d_%s", mIndex, sIndex, partNames[sIndex]);
+					output.writefln("o %.2d-%.2d-%s", mIndex, sIndex, partNames[sIndex]);
 				}
 				else
 				{
 					output.writeln("usemtl ", 22 + sIndex);
-					output.writefln("o %.2d_%.2d", mIndex, sIndex);
+					output.writefln("o %.2d-%.2d", mIndex, sIndex);
 				}
 				hasNormals = currentModel.normals.length > 0;
 				foreach (polygon; ms.polygons)
@@ -257,7 +407,7 @@ class Car : Drawable
 			}
 			materialLibraryFile.writeln("newmtl ", textureNum);
 			materialLibraryFile.writeln("illum 0");
-			materialLibraryFile.writeln(format("map_Kd -clamp on .\\car%.2d_%d.bmp", textureNum, alternate));
+			materialLibraryFile.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.bmp", 0, textureNum, alternate));
 			
 			File textureFile = File(format("output/%d_car%.2d_%d.bmp", paletteSet, textureNum, alternate), "wb");
 			textureFile.rawWrite(bmpHeader);

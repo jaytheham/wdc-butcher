@@ -276,6 +276,20 @@ private bool extractCarObj(string[] args)
 	return true;
 }
 
+private bool importCarObj(string[] args)
+{
+	try
+	{
+		selectedObject = new Car(args[1]);
+	}
+	catch (Exception e)
+	{
+		writeln(e.msg);
+		return false;
+	}
+	return true;
+}
+
 private bool listTracks(string[] args)
 {
 	writeln("\nIndex\tTrack Name");
@@ -355,6 +369,7 @@ private void setupCommands()
 	commands ~= UserCommand("e", "extract", "Extract and inflate zlib data {offset}");
 	commands ~= UserCommand("ecb", "extract-car-binary", "Extract car {index} binary data");
 	commands ~= UserCommand("eco", "extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
+	commands ~= UserCommand("ico", "import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/obj}", &importCarObj);
 	commands ~= UserCommand("etb", "extract-track", "Extract track {index} {variation} binary data");
 	commands ~= UserCommand("h", "help", "Display all available commands", "", &writeHelp);
 	commands ~= UserCommand("v", "version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
