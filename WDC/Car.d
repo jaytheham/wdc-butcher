@@ -6,7 +6,7 @@ import std.stdio,	   std.array,	   std.file,
 	   camera,
 	   gfm.math,	   gfm.opengl,
 	   wdc.tools,	   wdc.drawable,   wdc.renderer,
-	   wdc.carRenderer;
+	   wdc.png,        wdc.carRenderer;
 // Convert Binary files from the ROM or 3D model files into a simple intermediate format
 // from which it can output ROM compatible binaries or 3D models
 class Car : Drawable
@@ -45,7 +45,9 @@ class Car : Drawable
 		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesC;
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[] models;
-
+	}
+	public
+	{
 		union Colour
 		{
 			ushort whole;
@@ -383,11 +385,9 @@ class Car : Drawable
 		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
 
-		const byte[] bmpHeader = [0x42, 0x4D, 0,0,0,0, 0,0, 0,0, 54,0,0,0, 40,0,0,0, 
-		                          TEXTURE_WIDTH,0,0,0, TEXTURE_HEIGHT,0,0,0, 1,0, 16,0,
-		                          0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2];
+		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
+		                         2,2,2,2,2,2,2,2,2,2,2];
 		
 		File materialLibraryFile = File("output/car.mtl", "w");
 		Colour[] curPalette;
@@ -407,23 +407,11 @@ class Car : Drawable
 			}
 			materialLibraryFile.writeln("newmtl ", textureNum);
 			materialLibraryFile.writeln("illum 0");
-			materialLibraryFile.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.bmp", 0, textureNum, alternate));
+			materialLibraryFile.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.png", 0, textureNum, alternate));
 			
-			File textureFile = File(format("output/%d_car%.2d_%d.bmp", paletteSet, textureNum, alternate), "wb");
-			textureFile.rawWrite(bmpHeader);
+			File textureFile = File(format("output/%d_car%.2d_%d.png", paletteSet, textureNum, alternate), "wb");
 			curPalette = palettes[modelToPalMap[modelIndex]];
-			for (int i = 0; i < TEXTURE_SIZE_BYTES; i += 2)
-			{
-				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 1)]);
-				textureFile.rawWrite([cast(byte)(curPalette[(texture[i] & 0xf0) >>> 4].whole >>> 9)]);
-				textureFile.rawWrite([cast(byte)(curPalette[texture[i] & 0xf].whole >>> 1)]);
-				textureFile.rawWrite([cast(byte)(curPalette[texture[i] & 0xf].whole >>> 9)]);
-				
-				textureFile.rawWrite([cast(byte)(curPalette[(texture[i + 1] & 0xf0) >>> 4].whole >>> 1)]);
-				textureFile.rawWrite([cast(byte)(curPalette[(texture[i + 1] & 0xf0) >>> 4].whole >>> 9)]);
-				textureFile.rawWrite([cast(byte)(curPalette[texture[i + 1] & 0xf].whole >>> 1)]);
-				textureFile.rawWrite([cast(byte)(curPalette[texture[i + 1] & 0xf].whole >>> 9)]);
-			}
+			textureFile.rawWrite(Png.wdcTextureToPng(curPalette, texture, TEXTURE_WIDTH, TEXTURE_HEIGHT));
 			textureFile.close();
 		}
 		materialLibraryFile.close();
