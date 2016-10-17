@@ -132,7 +132,7 @@ class Car : Drawable
 	{
 		import std.string, std.conv;
 		
-		int currentModel, currentModelSection,
+		int currentModel = 0xffff, currentModelSection,
 		    vertexOffset, sectionVertexCount,
 		    normalOffset, sectionNormalCount,
 		    uvOffset;
@@ -171,6 +171,41 @@ class Car : Drawable
 				else if (lineParts.length >= 2)
 				{
 					// TODO convert faces into polygons for current section here.
+					if (currentModel != 0xffff)
+					{
+						ModelSection activeSection = models[currentModel].modelSections[currentModelSection];
+						string[] point1, point2, point3, point4;
+						foreach (face; faces)
+						{
+							point1 = split(face[0], "/");
+							point2 = split(face[1], "/");
+							point3 = split(face[2], "/");
+							point4 = face.length == 4 ? split(face[3], "/") : null;
+							writeln(point1, " ",point2, " ",point3, " ",point4);
+							writeln(sectionUvs.length, " ", uvOffset);
+							activeSection.polygons ~= Polygon(
+							                                  [cast(ushort)((parse!uint(point1[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+							                                   cast(ushort)((parse!uint(point2[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+							                                   cast(ushort)((parse!uint(point3[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+							                                   point4 != null ? cast(ushort)((parse!uint(point4[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)) : cast(ushort)0xFFFF
+							                                  ],
+							                                  [
+							                                   sectionUvs[parse!uint(point1[1]) - uvOffset - 1],
+							                                   sectionUvs[parse!uint(point2[1]) - uvOffset - 1],
+							                                   sectionUvs[parse!uint(point3[1]) - uvOffset - 1],
+							                                   point4 != null ? sectionUvs[parse!uint(point4[1]) - uvOffset - 1] : TextureCoordinate(0,0)
+							                                  ],
+							                                  [
+							                                   cast(ushort)((parse!uint(point1[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+							                                   cast(ushort)((parse!uint(point2[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+							                                   cast(ushort)((parse!uint(point3[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+							                                   point4 != null ? cast(ushort)((parse!uint(point4[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)) : 0
+							                                  ]
+							                                 );
+							writeln(activeSection.polygons[$-1].vertexIndices);
+						}
+					}
+					// new section
 					currentModel = parse!int(lineParts[0]);
 					currentModelSection = parse!int(lineParts[1]);
 					while (models.length <= currentModel)
@@ -224,37 +259,45 @@ class Car : Drawable
 				lineParts = split(line[2..$], " ");
 				int found;
 				int newValue;
-				foreach (index, face; faces)
+				if (lineParts.length == 3)
 				{
-					if (face.length == 3)
+					foreach (index, face; faces)
 					{
-						found = 0;
-						newValue = 3;
-						if (canFind(face, lineParts[0]))
+						if (face.length == 3)
 						{
-							found++;
-						}
-						if (canFind(face, lineParts[1]))
-						{
-							found++;
-							newValue -= 1;
-						}
-						if (canFind(face, lineParts[2]))
-						{
-							found++;
-							newValue -= 2;
-						}
-						if (found == 2)
-						{
-							faces[index] ~= lineParts[newValue];
-							break;
+							found = 0;
+							newValue = 3;
+							if (canFind(face, lineParts[0]))
+							{
+								found++;
+							}
+							if (canFind(face, lineParts[1]))
+							{
+								found++;
+								newValue -= 1;
+							}
+							if (canFind(face, lineParts[2]))
+							{
+								found++;
+								newValue -= 2;
+							}
+							if (found == 2)
+							{
+								faces[index] ~= lineParts[newValue];
+								break;
+							}
 						}
 					}
+					if (found != 2)
+					{
+						faces ~= lineParts;
+					}		
 				}
-				if (found != 2)
+				else
 				{
 					faces ~= lineParts;
 				}
+				
 			}
 			else if (line.startsWith("usemtl "))
 			{
