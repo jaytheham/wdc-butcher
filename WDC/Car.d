@@ -136,8 +136,8 @@ class Car : Drawable
 		    vertexOffset, sectionVertexCount,
 		    normalOffset, sectionNormalCount,
 		    uvOffset;
-		string line, materialLibraryPath;
-		string[] lineParts;
+		string line;
+		string[] lineParts, materialPaths;
 		TextureCoordinate[] sectionUvs;
 		string[][] faces;
 		File input = File(objFilePath, "r");
@@ -181,8 +181,6 @@ class Car : Drawable
 							point2 = split(face[1], "/");
 							point3 = split(face[2], "/");
 							point4 = face.length == 4 ? split(face[3], "/") : null;
-							writeln(point1, " ",point2, " ",point3, " ",point4);
-							writeln(sectionUvs.length, " ", uvOffset);
 							activeSection.polygons ~= Polygon(
 							                                  [cast(ushort)((parse!uint(point1[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
 							                                   cast(ushort)((parse!uint(point2[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
@@ -202,7 +200,6 @@ class Car : Drawable
 							                                   point4 != null ? cast(ushort)((parse!uint(point4[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)) : 0
 							                                  ]
 							                                 );
-							writeln(activeSection.polygons[$-1].vertexIndices);
 						}
 					}
 					// new section
@@ -299,6 +296,24 @@ class Car : Drawable
 				}
 				
 			}
+			else if (line.startsWith("mtllib "))
+			{
+				lineParts = split(line, " ");
+				if (canFind(lineParts[1], '\\') || canFind(lineParts[1], '/'))
+				{
+					materialPaths = texturePathsFromMtl(lineParts[1]);
+				}
+				else
+				{
+					int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
+					string materialLibraryPath = objFilePath[0..folderEndIndex + 1] ~ lineParts[1];
+					materialPaths = texturePathsFromMtl(materialLibraryPath);
+				}
+				foreach (path; materialPaths)
+				{
+					bodyTextures ~= Png.pngToWdcTexture(path);
+				}
+			}
 			else if (line.startsWith("usemtl "))
 			{
 				lineParts = split(line, " ");
@@ -316,6 +331,35 @@ class Car : Drawable
 
 		input.close();
 		// convert to binary files
+	}
+
+	private string[] texturePathsFromMtl(string mtlLibraryPath)
+	{
+		import std.conv, std.string;
+
+		string[] texturePaths, lineParts;
+		int textureNum;
+		string line;
+		File input = File(mtlLibraryPath, "r");
+		while((line = input.readln()) !is null)
+		{
+			if (line.startsWith("newmtl "))
+			{
+				lineParts = split(line, " ");
+				textureNum = parse!int(lineParts[1]);
+				if (texturePaths.length < textureNum + 1)
+				{
+					texturePaths.length = textureNum + 1;
+				}
+			}
+			if (line.startsWith("map_Kd "))
+			{
+				lineParts = split(line, "map_Kd ");
+				texturePaths[textureNum] = chomp(lineParts[1]);
+			}
+		}
+		input.close();
+		return texturePaths;
 	}
 
 	void setupDrawing(OpenGL opengl)

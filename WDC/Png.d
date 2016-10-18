@@ -1,6 +1,6 @@
 module wdc.png;
 
-import std.zlib,
+import std.zlib, std.stdio,
        wdc.car;
 
 static class Png
@@ -95,5 +95,76 @@ static class Png
 		}
 		c = c ^ 0xffffffff;
 		return [(c >> 24) & 0xff, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
+	}
+
+	// TODO need to pull out the palette also
+	public static ubyte[] pngToWdcTexture(string filePath)
+	{
+		import std.string, std.bitmanip, std.file;
+		ubyte[] texture;
+		if (exists(filePath))
+		{
+			File input = File(filePath, "rb");
+			assert(input.rawRead(new ubyte[4]) == [137, 'P', 'N', 'G'], format("%s not recognised as a PNG file.", filePath));
+
+			input.seek(8);
+			uint chunkSize = peek!uint(input.rawRead(new ubyte[4]));
+			input.seek(0x10);
+			uint width = peek!uint(input.rawRead(new ubyte[4]));
+			uint height = peek!uint(input.rawRead(new ubyte[4]));
+			
+			assert(input.rawRead(new ubyte[1])[0] == 4, "Unsupported Bit Depth");
+			assert(input.rawRead(new ubyte[1])[0] == 3, "Unsupported Colour Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Compression method");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Filter Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Interlacing");
+
+			uint position = chunkSize + 20;
+			ubyte[4] chunkName;
+			while (true)
+			{
+				input.seek(position);
+				chunkSize = peek!uint(input.rawRead(new ubyte[4]));
+				input.rawRead(chunkName);
+
+				if (chunkName == ['I','D','A','T'])
+				{
+					ubyte[] idat = input.rawRead(new ubyte[chunkSize]);
+					ubyte[] rawData = cast(ubyte[])uncompress(idat);
+					uint byteNum = 0;
+					foreach_reverse (y; 0..height)
+					{
+						byteNum += 1; // filter
+						foreach (x; 0..(width / 2))
+						{
+							texture ~= rawData[byteNum];
+							byteNum += 1;
+						}
+					}
+				}
+				else if (chunkName == ['P','L','T','E'])
+				{
+					// store colour data for later
+				}
+				else if (chunkName == ['t','R','N','S'])
+				{
+					// store transparency data for later
+				}
+				else if (chunkName == ['I','E','N','D'])
+				{
+					break;
+				}
+
+				position += chunkSize + 12;
+			}
+			// TODO combine palette parts here
+
+			input.close();
+		}
+		else
+		{
+			writeln("File not found: ", filePath);
+		}
+		return [];
 	}
 }
