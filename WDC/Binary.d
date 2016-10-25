@@ -756,7 +756,7 @@ public:
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
 			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
-
+			//std.file.write(format("%.6X",offset), cast(ubyte[])uncompress(binary[offset..offset + zlibSize]));
 			//writefln("%x inflated", offset);
 
 			if (zlibSize % 2 == 1) // Next file will be aligned to short

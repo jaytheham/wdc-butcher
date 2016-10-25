@@ -97,7 +97,6 @@ static class Png
 		return [(c >> 24) & 0xff, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
 	}
 
-	// TODO need to pull out the palette also
 	public static ubyte[] pngToWdcTexture(string filePath)
 	{
 		import std.string, std.bitmanip, std.file;
@@ -142,13 +141,58 @@ static class Png
 						}
 					}
 				}
-				else if (chunkName == ['P','L','T','E'])
+				else if (chunkName == ['I','E','N','D'])
 				{
-					// store colour data for later
+					break;
+				}
+
+				position += chunkSize + 12;
+			}
+			input.close();
+		}
+		else
+		{
+			writeln("File not found: ", filePath);
+		}
+		return texture;
+	}
+
+	public static Car.Colour[] pngToWdcPalette(string filePath)
+	{
+		import std.string, std.bitmanip, std.file;
+		Car.Colour[] palette;
+		if (exists(filePath))
+		{
+			File input = File(filePath, "rb");
+			assert(input.rawRead(new ubyte[4]) == [137, 'P', 'N', 'G'], format("%s not recognised as a PNG file.", filePath));
+
+			input.seek(8);
+			uint chunkSize = peek!uint(input.rawRead(new ubyte[4]));
+			input.seek(0x18);
+			
+			assert(input.rawRead(new ubyte[1])[0] == 4, "Unsupported Bit Depth");
+			assert(input.rawRead(new ubyte[1])[0] == 3, "Unsupported Colour Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Compression method");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Filter Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Interlacing");
+
+			uint position = chunkSize + 20;
+			ubyte[4] chunkName;
+			ubyte[] colours;
+			ubyte[] alphas;
+			while (true)
+			{
+				input.seek(position);
+				chunkSize = peek!uint(input.rawRead(new ubyte[4]));
+				input.rawRead(chunkName);
+
+				if (chunkName == ['P','L','T','E'])
+				{
+					colours = input.rawRead(new ubyte[chunkSize]);
 				}
 				else if (chunkName == ['t','R','N','S'])
 				{
-					// store transparency data for later
+					alphas = input.rawRead(new ubyte[chunkSize]);
 				}
 				else if (chunkName == ['I','E','N','D'])
 				{
@@ -157,14 +201,21 @@ static class Png
 
 				position += chunkSize + 12;
 			}
-			// TODO combine palette parts here
-
 			input.close();
+			for(int i = 0; i < colours.length; i += 3)
+			{
+				palette ~= Car.Colour(
+				                  ((colours[i]     / 8) << 11) |
+				                  ((colours[i + 1] / 8) << 6) |
+				                  ((colours[i + 2] / 8) << 1) |
+				                  (alphas[i / 3] == 0 ? 0 : 1)
+				                 );
+			}
 		}
 		else
 		{
 			writeln("File not found: ", filePath);
 		}
-		return [];
+		return palette;
 	}
 }

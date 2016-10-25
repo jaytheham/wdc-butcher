@@ -25,6 +25,9 @@ class Car : Drawable
 		enum PALETTES_PER_SET = 8;
 		enum OBJ_WHEEL_ID = "wheel_origins";
 		enum OBJ_LIGHT_ID = "light_origins";
+		ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
+		                            0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
+		                            2,2,2,2,2,2,2,2,2,2,2]; // cheat by saying second light of each pair uses lit palette
 
 		const string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
 		                            "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br",
@@ -32,9 +35,10 @@ class Car : Drawable
 		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
 		                            "wingmirror_l", "wingmirror_r", "roof_ornament", "LoD1", "LoD2", "LoD3"];
 
-		float unknown1;
-		float carCameraYOffset;
-		// Both these are Z X Y
+		float unknown1 = 0.5;
+		float carCameraYOffset = 0.6;
+		// Both these are Z X Y in the binaries
+		// but the vec3fs are kept X Y Z
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
 		uint[] modelToTextureMap;
@@ -154,7 +158,7 @@ class Car : Drawable
 					{
 						line = input.readln();
 						lineParts = split(line[2..$], " ");
-						wheelOrigins[i] = vec3f(parse!float(lineParts[2]), parse!float(lineParts[0]), parse!float(lineParts[1]));
+						wheelOrigins[i] = vec3f(parse!float(lineParts[0]), parse!float(lineParts[1]), parse!float(lineParts[2]));
 					}
 					vertexOffset += 4;
 				}
@@ -164,16 +168,14 @@ class Car : Drawable
 					{
 						line = input.readln();
 						lineParts = split(line[2..$], " ");
-						lightOrigins[i] = vec3f(parse!float(lineParts[2]), parse!float(lineParts[0]), parse!float(lineParts[1]));
+						lightOrigins[i] = vec3f(parse!float(lineParts[0]), parse!float(lineParts[1]), parse!float(lineParts[2]));
 					}
 					vertexOffset += 4;
 				}
 				else if (lineParts.length >= 2)
 				{
-					// TODO convert faces into polygons for current section here.
 					if (currentModel != 0xffff)
 					{
-						ModelSection activeSection = models[currentModel].modelSections[currentModelSection];
 						string[] point1, point2, point3, point4;
 						foreach (face; faces)
 						{
@@ -181,7 +183,7 @@ class Car : Drawable
 							point2 = split(face[1], "/");
 							point3 = split(face[2], "/");
 							point4 = face.length == 4 ? split(face[3], "/") : null;
-							activeSection.polygons ~= Polygon(
+							models[currentModel].modelSections[currentModelSection].polygons ~= Polygon(
 							                                  [cast(ushort)((parse!uint(point1[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
 							                                   cast(ushort)((parse!uint(point2[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
 							                                   cast(ushort)((parse!uint(point3[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
@@ -311,7 +313,10 @@ class Car : Drawable
 				}
 				foreach (path; materialPaths)
 				{
-					bodyTextures ~= Png.pngToWdcTexture(path);
+					if (path != "")
+					{
+						bodyTextures ~= Png.pngToWdcTexture(path);
+					}
 				}
 			}
 			else if (line.startsWith("usemtl "))
@@ -325,12 +330,19 @@ class Car : Drawable
 				if (currentModel == 0)
 				{
 					modelToTextureMap[currentModelSection] = materialIndex;
+					palettesA[MODEL_TO_PALETTE[currentModelSection]] = Png.pngToWdcPalette(materialPaths[materialIndex]);
 				}
 			}
 		}
+		bodyTextures ~= Png.pngToWdcTexture("output\\0_car22_0.png");
+		bodyTextures ~= Png.pngToWdcTexture("output\\0_car23_0.png");
+		bodyTextures ~= Png.pngToWdcTexture("output\\0_car24_0.png");
+		bodyTextures ~= Png.pngToWdcTexture("output\\0_car25_0.png");
 
+		insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
-		// convert to binary files
+		// TODO: compactVertices()
+		generateBinaries();
 	}
 
 	private string[] texturePathsFromMtl(string mtlLibraryPath)
@@ -360,6 +372,234 @@ class Car : Drawable
 		}
 		input.close();
 		return texturePaths;
+	}
+
+	private void generateBinaries()
+	{
+		import std.zlib:compress;
+
+		enum FIXED_DATA_END = 0x398;
+		binaryData = [0,0,3,0x94,0,0,0,0];
+		binaryData ~= nativeToBigEndian(unknown1);
+		binaryData ~= nativeToBigEndian(carCameraYOffset);
+		binaryData ~= [0,0,0,0];
+
+		foreach(wheel; wheelOrigins)
+		{
+			binaryData ~= nativeToBigEndian(wheel.z);
+			binaryData ~= nativeToBigEndian(wheel.x);
+			binaryData ~= nativeToBigEndian(wheel.y);
+		}
+		foreach(light; lightOrigins)
+		{
+			binaryData ~= nativeToBigEndian(light.z);
+			binaryData ~= nativeToBigEndian(light.x);
+			binaryData ~= nativeToBigEndian(light.y);
+		}
+		binaryData ~= [0,0,0,0,0,0,0,0];
+
+		// Until/if I handle the fixed palettes the inserted can just go in order
+		uint palettePointer = FIXED_DATA_END;
+		foreach(i; 0..8)
+		{
+			binaryData ~= nativeToBigEndian(palettePointer + (i * 0x20));
+		}
+		binaryData ~= [0,0,0,0];
+
+		uint paletteSize = PALETTES_PER_SET * COLOURS_PER_PALETTE * 2;
+		uint texturesSize = getTexturesSize();
+		uint textureDescriptorsSize = bodyTextures.length * 0x20;
+		
+		uint a0Start = FIXED_DATA_END + paletteSize + texturesSize + textureDescriptorsSize;
+		uint a0Count = models[0].modelSections.length + 4; // +4 moving wheel textures
+		// 0xA0
+		binaryData ~= nativeToBigEndian(a0Start);
+		binaryData ~= [0,0,0,0];
+		binaryData ~= nativeToBigEndian(a0Count);
+		// After the 3rd LoD there is the weird small texture, then the four moving wheel textures
+		// for now lets leave out the small mutant and see what happens
+		binaryData ~= [0,0,0,0,0,0,0,0];
+
+		uint b4Start = a0Start + ((models[0].modelSections.length + 4) * 4);
+		// 0xB4
+		binaryData ~= nativeToBigEndian(b4Start);
+		binaryData ~= [0,0,0,0xFF & bodyTextures.length];
+		binaryData ~= [0,0,0,0,0,0,0,0,0,0,0,0];
+
+		uint c8Start = b4Start + (bodyTextures.length * 4);
+		// 0xC8
+		binaryData ~= nativeToBigEndian(c8Start);
+		binaryData ~= [0,0,0,0];
+		binaryData ~= [0,0,0,4]; // moving wheel textures
+		binaryData ~= [0,0,0,0,0,0,0,0];
+
+		uint dcStart = c8Start; // the values these point to are always equal, so just use the same twice
+		// 0xDC
+		binaryData ~= nativeToBigEndian(dcStart);
+		binaryData ~= [0,0,0,4];
+		binaryData ~= [0,0,0,0,	0,0,0,0];
+		binaryData ~= nativeToBigEndian(a0Count);
+		binaryData ~= [0,0,0,4];
+
+		// 0xF4
+		binaryData ~= new ubyte[0x2A4];
+		binaryData ~= new ubyte[paletteSize];
+		binaryData ~= new ubyte[texturesSize];
+
+		if (binaryData.length % 8 != 0) // pad to next doubleword
+		{
+			binaryData ~= new ubyte[8 - binaryData.length % 8];
+		}
+		
+		uint[] textureDescriptorPointers = new uint[bodyTextures.length];
+		uint insertedTexturePointer = FIXED_DATA_END + paletteSize;
+		// Body texture descriptors
+		foreach (i, texture; bodyTextures)
+		{
+			textureDescriptorPointers[i] = binaryData.length;
+			binaryData ~= [0xFD, 0x10, 0, 0];
+			binaryData ~= nativeToBigEndian(insertedTexturePointer);
+			binaryData ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
+			assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
+			binaryData ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
+
+			insertedTexturePointer += texture.length;
+		}
+		
+		foreach (modelNum, textureNum; modelToTextureMap)
+		{
+			binaryData ~= nativeToBigEndian(textureDescriptorPointers[textureNum]);
+		}
+		binaryData ~= nativeToBigEndian(textureDescriptorPointers[$ - 4]);
+		binaryData ~= nativeToBigEndian(textureDescriptorPointers[$ - 3]);
+		binaryData ~= nativeToBigEndian(textureDescriptorPointers[$ - 2]);
+		binaryData ~= nativeToBigEndian(textureDescriptorPointers[$ - 1]);
+
+		foreach (texturePointer; textureDescriptorPointers)
+		{
+			binaryData ~= nativeToBigEndian(texturePointer);
+		}
+
+		if (binaryData.length % 8 != 0) // pad to next doubleword
+		{
+			binaryData ~= new ubyte[8 - binaryData.length % 8];
+		}
+		// Moving wheel textures:
+		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (bodyTextures.length - 4));
+		foreach (i, texture; bodyTextures[$-4..$])
+		{
+			textureDescriptorPointers[i] = binaryData.length;
+			binaryData ~= [0xFD, 0x10, 0, 0];
+			binaryData ~= nativeToBigEndian(insertedTexturePointer);
+			binaryData ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
+			assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
+			binaryData ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
+
+			insertedTexturePointer += texture.length;
+		}
+		foreach (texturePointer; textureDescriptorPointers[0..4])
+		{
+			binaryData ~= nativeToBigEndian(texturePointer);
+		}
+		foreach (texturePointer; textureDescriptorPointers[0..4])
+		{
+			binaryData ~= nativeToBigEndian(texturePointer);
+		}
+
+		uint verticesPointer, normalsPointer, polygonsPointer;
+		uint sectionIndex = 0;
+		foreach (model; models)
+		{
+			verticesPointer = binaryData.length;
+			foreach (vertex; model.vertices)
+			{
+				binaryData ~= nativeToBigEndian(vertex.z);
+				binaryData ~= nativeToBigEndian(vertex.x);
+				binaryData ~= nativeToBigEndian(vertex.y);
+			}
+			normalsPointer = binaryData.length;
+			foreach (normal; model.normals)
+			{
+				binaryData ~= [normal.z, normal.x, normal.y]; // OK not to cast?
+			}
+
+			if (binaryData.length % 16 != 0) // pad to next doubleword
+			{
+				binaryData ~= new ubyte[16 - binaryData.length % 16];
+			}
+
+			foreach (section; model.modelSections)
+			{
+				polygonsPointer = binaryData.length;
+				foreach (polygon; section.polygons)
+				{
+					binaryData ~= [0,0,0,0, 0,0,0,0];// Are the values here actually used?
+					binaryData ~= nativeToBigEndian(polygon.vertexIndices[0]);
+					binaryData ~= nativeToBigEndian(polygon.vertexIndices[1]);
+					binaryData ~= nativeToBigEndian(polygon.vertexIndices[2]);
+					binaryData ~= nativeToBigEndian(polygon.vertexIndices[3]);
+					binaryData ~= polygon.textureCoordinates[0].u;
+					binaryData ~= polygon.textureCoordinates[0].v;
+					binaryData ~= polygon.textureCoordinates[1].u;
+					binaryData ~= polygon.textureCoordinates[1].v;
+					binaryData ~= polygon.textureCoordinates[2].u;
+					binaryData ~= polygon.textureCoordinates[2].v;
+					binaryData ~= polygon.textureCoordinates[3].u;
+					binaryData ~= polygon.textureCoordinates[3].v;
+					binaryData ~= nativeToBigEndian(polygon.normalIndices[0]);
+					binaryData ~= nativeToBigEndian(polygon.normalIndices[1]);
+					binaryData ~= nativeToBigEndian(polygon.normalIndices[2]);
+					binaryData ~= nativeToBigEndian(polygon.normalIndices[3]);
+				}
+				binaryData[(0xF4 + (sectionIndex * 0x10))..(0xF8 + (sectionIndex * 0x10))] = nativeToBigEndian(binaryData.length);
+				sectionIndex++;
+				binaryData ~= nativeToBigEndian(verticesPointer);
+				binaryData ~= nativeToBigEndian(model.vertices.length);
+				binaryData ~= nativeToBigEndian(polygonsPointer);
+				binaryData ~= nativeToBigEndian(section.polygons.length);
+				binaryData ~= [0,0,0,0, 0,0,0,0]; // Not used right?
+				binaryData ~= [0,0,0,0, 0,0,0,0]; // Not used right?
+				binaryData ~= nativeToBigEndian(normalsPointer);
+				binaryData ~= nativeToBigEndian(model.normals.length);
+				binaryData ~= [0,0,0,0, 0,0,0,0]; // padding
+			}
+			
+		}
+
+		std.file.write("myBinaryData", binaryData);
+		uint offset = 0;
+		uint adder = 0x3E80;
+		ubyte[] outfile = [0,0,0,0];
+		outfile ~= nativeToBigEndian(binaryData.length);
+		while (offset < binaryData.length)
+		{
+			if (offset + adder > binaryData.length)
+			{
+				adder = binaryData.length - offset;
+			}
+			//std.file.write(format("myBinaryDeflated %d", offset), compress(binaryData[offset..offset + adder]));
+			outfile ~= nativeToBigEndian(compress(binaryData[offset..offset + adder]).length);
+			outfile ~= compress(binaryData[offset..offset + adder]);
+			if (outfile.length % 2 == 1 && offset + adder != binaryData.length)
+			{
+				outfile ~= [0];
+			}
+			offset += 0x3E80;
+		}
+		outfile[0..4] = nativeToBigEndian(outfile.length);
+		std.file.write("myBinaryDataZlibBlock", outfile);
+	}
+
+	private uint getTexturesSize()
+	{
+		uint size = 0;
+		foreach(texture; bodyTextures)
+		{
+			size += texture.length;
+		}
+		return size;
 	}
 
 	void setupDrawing(OpenGL opengl)
@@ -430,7 +670,7 @@ class Car : Drawable
 				}
 				else
 				{
-					output.writeln("usemtl ", 22 + sIndex);
+					output.writeln("usemtl ", 14);
 					output.writefln("o %.2d-%.2d", mIndex, sIndex);
 				}
 				hasNormals = currentModel.normals.length > 0;
@@ -471,10 +711,6 @@ class Car : Drawable
 	{
 		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
-
-		ubyte[] modelToPalMap = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
-		                         2,2,2,2,2,2,2,2,2,2,2];
 		
 		File materialLibraryFile = File("output/car.mtl", "w");
 		Colour[] curPalette;
@@ -497,7 +733,7 @@ class Car : Drawable
 			materialLibraryFile.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.png", 0, textureNum, alternate));
 			
 			File textureFile = File(format("output/%d_car%.2d_%d.png", paletteSet, textureNum, alternate), "wb");
-			curPalette = palettes[modelToPalMap[modelIndex]];
+			curPalette = palettes[MODEL_TO_PALETTE[modelIndex]];
 			textureFile.rawWrite(Png.wdcTextureToPng(curPalette, texture, TEXTURE_WIDTH, TEXTURE_HEIGHT));
 			textureFile.close();
 		}

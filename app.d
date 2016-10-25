@@ -53,6 +53,33 @@ private
 
 void testing()
 {
+	import std.bitmanip;
+	ubyte[] bin;
+	File binaryHandle = File("00 car main zlib_2", "r");
+	bin.length = cast(uint)binaryHandle.size;
+	binaryHandle.rawRead(bin);
+	binaryHandle.close();
+	uint offset = 0;
+	uint adder = 0x3E80;
+	ubyte[] outfile = [0,0,0,0];
+	outfile ~= nativeToBigEndian(bin.length);
+	while (offset < bin.length)
+	{
+		if (offset + adder > bin.length)
+		{
+			adder = bin.length - offset;
+		}
+		//std.file.write(format("myBinaryDeflated %d", offset), compress(binaryData[offset..offset + adder]));
+		outfile ~= nativeToBigEndian(compress(bin[offset..offset + adder]).length);
+		outfile ~= compress(bin[offset..offset + adder]);
+		if (outfile.length % 2 == 1 && offset + adder != bin.length)
+		{
+			outfile ~= [0];
+		}
+		offset += 0x3E80;
+	}
+	outfile[0..4] = nativeToBigEndian(outfile.length);
+	std.file.write("00 car deflated", outfile);
 	foreach (i, carname; binaryFile.getCarList())
 	{
 		writeln(carname);
@@ -78,7 +105,7 @@ void main(string[] args)
 
 	setOpenGLState();
 
-	//testing();
+	testing();
 
 	Camera basicCamera = new Camera(gfm.math.radians(45f), cast(float)WINDOW_WIDTH / WINDOW_HEIGHT);
 	setupCommands();
