@@ -341,7 +341,7 @@ class Car : Drawable
 
 		insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
-		// TODO: compactVertices()
+		removeRepeatedVertices();
 		generateBinaries();
 	}
 
@@ -372,6 +372,55 @@ class Car : Drawable
 		}
 		input.close();
 		return texturePaths;
+	}
+
+	private void removeRepeatedVertices()
+	{
+		foreach (ref model; models)
+		{
+			int[] newIndices = new int[model.vertices.length];
+			int[] removals;
+			bool found = false;
+			foreach (c, currentVertex; model.vertices)
+			{
+				found = false;
+				foreach (p, previousVertex; model.vertices[0..c])
+				{
+					if (currentVertex == previousVertex)
+					{
+						newIndices[c] = newIndices[p];
+						removals ~= c;
+						found = true;
+						break;
+					}
+				}
+				if (!found)
+				{
+					newIndices[c] = c - removals.length;
+				}
+			}
+
+			// remove
+			foreach_reverse (i, value; removals)
+			{
+				model.vertices = remove(model.vertices, value);
+			}
+			
+			foreach (ref section; model.modelSections)
+			{
+				foreach (ref polygon; section.polygons)
+				{
+					foreach (ref vertexIndex; polygon.vertexIndices)
+					{
+						if (vertexIndex == 0xFFFF)
+						{
+							continue;
+						}
+						vertexIndex = cast(ushort)newIndices[vertexIndex];
+					}
+				}
+			}
+		}
 	}
 
 	private void generateBinaries()
@@ -426,14 +475,14 @@ class Car : Drawable
 		binaryData ~= [0,0,0,0xFF & bodyTextures.length];
 		binaryData ~= [0,0,0,0,0,0,0,0,0,0,0,0];
 
-		uint c8Start = b4Start + (bodyTextures.length * 4);
+		uint c8Start = b4Start + (bodyTextures.length * 4) + (4 * 0x20);
 		// 0xC8
 		binaryData ~= nativeToBigEndian(c8Start);
 		binaryData ~= [0,0,0,0];
 		binaryData ~= [0,0,0,4]; // moving wheel textures
 		binaryData ~= [0,0,0,0,0,0,0,0];
 
-		uint dcStart = c8Start; // the values these point to are always equal, so just use the same twice
+		uint dcStart = c8Start + (4 * 4);
 		// 0xDC
 		binaryData ~= nativeToBigEndian(dcStart);
 		binaryData ~= [0,0,0,4];
@@ -510,9 +559,10 @@ class Car : Drawable
 
 		uint verticesPointer, normalsPointer, polygonsPointer;
 		uint sectionIndex = 0;
-		foreach (model; models)
+		foreach (m, model; models)
 		{
 			verticesPointer = binaryData.length;
+			writeln(model.vertices.length);
 			foreach (vertex; model.vertices)
 			{
 				binaryData ~= nativeToBigEndian(vertex.z);
@@ -530,12 +580,13 @@ class Car : Drawable
 				binaryData ~= new ubyte[16 - binaryData.length % 16];
 			}
 
-			foreach (section; model.modelSections)
+			foreach (s, section; model.modelSections)
 			{
 				polygonsPointer = binaryData.length;
 				foreach (polygon; section.polygons)
 				{
-					binaryData ~= [0,0,0,0, 0,0,0,0];// Are the values here actually used?
+					binaryData ~= [0,0,0,m == 0 ? 0x21 : 0];
+					binaryData ~= [m == 0 ? cast(ubyte)s : 0x12,0,0,0];
 					binaryData ~= nativeToBigEndian(polygon.vertexIndices[0]);
 					binaryData ~= nativeToBigEndian(polygon.vertexIndices[1]);
 					binaryData ~= nativeToBigEndian(polygon.vertexIndices[2]);
@@ -680,7 +731,7 @@ class Car : Drawable
 					{
 						output.writeln("vt ", uv.u / 80.0, " ", uv.v / 38.0);
 					}
-					output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
+					output.write("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
 					                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
 
 					                     polygon.vertexIndices[1] + vertexOffest, "/-3/",
@@ -690,15 +741,16 @@ class Car : Drawable
 					                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "");
 					if (polygon.vertexIndices[3] != 0xFFFF)
 					{
-						output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
-						                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
+						//output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
+						//                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
 
-						                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
-						                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "", " ",
+						//                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
+						//                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "", " ",
 
-						                     polygon.vertexIndices[3] + vertexOffest, "/-1/",
+						output.write(                     " ", polygon.vertexIndices[3] + vertexOffest, "/-1/",
 						                     hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
 					}
+					output.writeln("");
 					uvOffset += 4;
 				}
 			}
