@@ -531,6 +531,7 @@ class Car : Drawable
 			{
 				assert(texture.length == 8, "Texture is not 8");
 				binaryData ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
+				insertedTexturePointer += i == 21 ? 8 : 0;
 			}
 			
 			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
@@ -579,6 +580,10 @@ class Car : Drawable
 
 		uint verticesPointer, normalsPointer, polygonsPointer;
 		uint sectionIndex = 0;
+		// models should be fixed size at 4?
+		models.length = 4;
+		models[2].modelSections.length = 4;
+		models[3].modelSections.length = 4;
 		foreach (m, model; models)
 		{
 			verticesPointer = binaryData.length;
