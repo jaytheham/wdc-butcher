@@ -80,11 +80,11 @@ void testing()
 	}
 	outfile[0..4] = nativeToBigEndian(outfile.length);
 	std.file.write("00 car deflated", outfile);
-	foreach (i, carname; binaryFile.getCarList())
-	{
-		writeln(carname);
-		binaryFile.getCar(i);
-	}
+	//foreach (i, carname; binaryFile.getCarList())
+	//{
+	//	writeln(carname);
+	//	binaryFile.getCar(i);
+	//}
 }
 
 void main(string[] args)

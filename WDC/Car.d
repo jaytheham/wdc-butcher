@@ -137,7 +137,7 @@ class Car : Drawable
 		import std.string, std.conv;
 		
 		int currentModel = 0xffff, currentModelSection,
-		    vertexOffset, sectionVertexCount,
+		    totalVertexCount = 0, sectionVertexCount = 0,
 		    normalOffset, sectionNormalCount,
 		    uvOffset;
 		string line;
@@ -145,65 +145,79 @@ class Car : Drawable
 		TextureCoordinate[] sectionUvs;
 		string[][] faces;
 		File input = File(objFilePath, "r");
+
+		// TODO: this map should always be this size right? for import and export rather than added to
+		modelToTextureMap = new uint[0x1E];
+
+		void facesToPolygons()
+		{
+			string[] point1, point2, point3, point4;
+			foreach (face; faces)
+			{
+				point1 = split(face[0], "/");
+				point2 = split(face[1], "/");
+				point3 = split(face[2], "/");
+				point4 = face.length == 4 ? split(face[3], "/") : null;
+				models[currentModel].modelSections[currentModelSection].polygons ~= Polygon(
+					[
+					cast(ushort)((parse!uint(point1[0]) - totalVertexCount - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+					cast(ushort)((parse!uint(point2[0]) - totalVertexCount - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+					cast(ushort)((parse!uint(point3[0]) - totalVertexCount - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
+					point4 != null ? cast(ushort)((parse!uint(point4[0]) - totalVertexCount - 1) + (models[currentModel].vertices.length - sectionVertexCount)) : cast(ushort)0xFFFF
+					],
+					[
+					sectionUvs[parse!uint(point1[1]) - uvOffset - 1],
+					sectionUvs[parse!uint(point2[1]) - uvOffset - 1],
+					sectionUvs[parse!uint(point3[1]) - uvOffset - 1],
+					point4 != null ? sectionUvs[parse!uint(point4[1]) - uvOffset - 1] : TextureCoordinate(0,0)
+					],
+					[
+					cast(ushort)((parse!uint(point1[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+					cast(ushort)((parse!uint(point2[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+					cast(ushort)((parse!uint(point3[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
+					point4 != null ? cast(ushort)((parse!uint(point4[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)) : 0
+					]
+					);
+			}
+		}
+
 		while((line = input.readln()) !is null)
 		{
 			line = chomp(line);
 			
 			if (line.startsWith("o "))
 			{
+				if (currentModel != 0xffff)
+					{
+						facesToPolygons();
+					}
 				lineParts = split(line[2..$], "-");
 				if (lineParts[0] == OBJ_WHEEL_ID)
 				{
+					// TODO assert there are four verts here
+					currentModel = 0xffff;
 					foreach (i; 0..4)
 					{
 						line = input.readln();
 						lineParts = split(line[2..$], " ");
 						wheelOrigins[i] = vec3f(parse!float(lineParts[0]), parse!float(lineParts[1]), parse!float(lineParts[2]));
 					}
-					vertexOffset += 4;
+					totalVertexCount += 4;
 				}
 				else if (lineParts[0] == OBJ_LIGHT_ID)
 				{
+					// TODO assert there are four verts here
+					currentModel = 0xffff;
 					foreach (i; 0..4)
 					{
 						line = input.readln();
 						lineParts = split(line[2..$], " ");
 						lightOrigins[i] = vec3f(parse!float(lineParts[0]), parse!float(lineParts[1]), parse!float(lineParts[2]));
 					}
-					vertexOffset += 4;
+					totalVertexCount += 4;
 				}
 				else if (lineParts.length >= 2)
 				{
-					if (currentModel != 0xffff)
-					{
-						string[] point1, point2, point3, point4;
-						foreach (face; faces)
-						{
-							point1 = split(face[0], "/");
-							point2 = split(face[1], "/");
-							point3 = split(face[2], "/");
-							point4 = face.length == 4 ? split(face[3], "/") : null;
-							models[currentModel].modelSections[currentModelSection].polygons ~= Polygon(
-							                                  [cast(ushort)((parse!uint(point1[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
-							                                   cast(ushort)((parse!uint(point2[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
-							                                   cast(ushort)((parse!uint(point3[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)),
-							                                   point4 != null ? cast(ushort)((parse!uint(point4[0]) - vertexOffset - 1) + (models[currentModel].vertices.length - sectionVertexCount)) : cast(ushort)0xFFFF
-							                                  ],
-							                                  [
-							                                   sectionUvs[parse!uint(point1[1]) - uvOffset - 1],
-							                                   sectionUvs[parse!uint(point2[1]) - uvOffset - 1],
-							                                   sectionUvs[parse!uint(point3[1]) - uvOffset - 1],
-							                                   point4 != null ? sectionUvs[parse!uint(point4[1]) - uvOffset - 1] : TextureCoordinate(0,0)
-							                                  ],
-							                                  [
-							                                   cast(ushort)((parse!uint(point1[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
-							                                   cast(ushort)((parse!uint(point2[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
-							                                   cast(ushort)((parse!uint(point3[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)),
-							                                   point4 != null ? cast(ushort)((parse!uint(point4[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount)) : 0
-							                                  ]
-							                                 );
-						}
-					}
 					// new section
 					currentModel = parse!int(lineParts[0]);
 					currentModelSection = parse!int(lineParts[1]);
@@ -215,7 +229,7 @@ class Car : Drawable
 					{
 						models[currentModel].modelSections ~= ModelSection();
 					}
-					vertexOffset += sectionVertexCount;
+					totalVertexCount += sectionVertexCount;
 					normalOffset += sectionNormalCount;
 					uvOffset += sectionUvs.length;
 					sectionNormalCount = 0;
@@ -258,6 +272,7 @@ class Car : Drawable
 				lineParts = split(line[2..$], " ");
 				int found;
 				int newValue;
+				// TODO: might be a good idea to remove this face compression now I have quads from blender?
 				if (lineParts.length == 3)
 				{
 					foreach (index, face; faces)
@@ -317,16 +332,16 @@ class Car : Drawable
 					{
 						bodyTextures ~= Png.pngToWdcTexture(path);
 					}
+					else
+					{
+						bodyTextures ~= new ubyte[8];
+					}
 				}
 			}
 			else if (line.startsWith("usemtl "))
 			{
 				lineParts = split(line, " ");
 				int materialIndex = parse!int(lineParts[1]);
-				if (modelToTextureMap.length <= currentModelSection)
-				{
-					modelToTextureMap.length = currentModelSection + 1;
-				}
 				if (currentModel == 0)
 				{
 					modelToTextureMap[currentModelSection] = materialIndex;
@@ -334,6 +349,7 @@ class Car : Drawable
 				}
 			}
 		}
+		facesToPolygons();
 		bodyTextures ~= Png.pngToWdcTexture("output\\0_car22_0.png");
 		bodyTextures ~= Png.pngToWdcTexture("output\\0_car23_0.png");
 		bodyTextures ~= Png.pngToWdcTexture("output\\0_car24_0.png");
@@ -341,7 +357,7 @@ class Car : Drawable
 
 		insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
-		removeRepeatedVertices();
+		//removeRepeatedVertices();
 		generateBinaries();
 	}
 
@@ -349,7 +365,7 @@ class Car : Drawable
 	{
 		import std.conv, std.string;
 
-		string[] texturePaths, lineParts;
+		string[] texturePaths = new string[0x16], lineParts;
 		int textureNum;
 		string line;
 		File input = File(mtlLibraryPath, "r");
@@ -359,10 +375,6 @@ class Car : Drawable
 			{
 				lineParts = split(line, " ");
 				textureNum = parse!int(lineParts[1]);
-				if (texturePaths.length < textureNum + 1)
-				{
-					texturePaths.length = textureNum + 1;
-				}
 			}
 			if (line.startsWith("map_Kd "))
 			{
@@ -460,7 +472,7 @@ class Car : Drawable
 		uint textureDescriptorsSize = bodyTextures.length * 0x20;
 		
 		uint a0Start = FIXED_DATA_END + paletteSize + texturesSize + textureDescriptorsSize;
-		uint a0Count = models[0].modelSections.length + 4; // +4 moving wheel textures
+		uint a0Count = modelToTextureMap.length + 4; // +4 moving wheel textures
 		// 0xA0
 		binaryData ~= nativeToBigEndian(a0Start);
 		binaryData ~= [0,0,0,0];
@@ -469,7 +481,7 @@ class Car : Drawable
 		// for now lets leave out the small mutant and see what happens
 		binaryData ~= [0,0,0,0,0,0,0,0];
 
-		uint b4Start = a0Start + ((models[0].modelSections.length + 4) * 4);
+		uint b4Start = a0Start + ((modelToTextureMap.length + 4) * 4);
 		// 0xB4
 		binaryData ~= nativeToBigEndian(b4Start);
 		binaryData ~= [0,0,0,0xFF & bodyTextures.length];
@@ -509,11 +521,19 @@ class Car : Drawable
 			binaryData ~= [0xFD, 0x10, 0, 0];
 			binaryData ~= nativeToBigEndian(insertedTexturePointer);
 			binaryData ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
-			assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
-			binaryData ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+			if (texture.length > 8)
+			{
+				assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
+				binaryData ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+				insertedTexturePointer += texture.length;
+			}
+			else
+			{
+				assert(texture.length == 8, "Texture is not 8");
+				binaryData ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
+			}
+			
 			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
-
-			insertedTexturePointer += texture.length;
 		}
 		
 		foreach (modelNum, textureNum; modelToTextureMap)
@@ -562,7 +582,6 @@ class Car : Drawable
 		foreach (m, model; models)
 		{
 			verticesPointer = binaryData.length;
-			writeln(model.vertices.length);
 			foreach (vertex; model.vertices)
 			{
 				binaryData ~= nativeToBigEndian(vertex.z);
@@ -604,8 +623,13 @@ class Car : Drawable
 					binaryData ~= nativeToBigEndian(polygon.normalIndices[2]);
 					binaryData ~= nativeToBigEndian(polygon.normalIndices[3]);
 				}
-				binaryData[(0xF4 + (sectionIndex * 0x10))..(0xF8 + (sectionIndex * 0x10))] = nativeToBigEndian(binaryData.length);
-				sectionIndex++;
+				
+				foreach (nothing; 0..(m == 1 ? 4 : 1))
+				{
+					binaryData[(0xF4 + (sectionIndex * 0x10))..(0xF8 + (sectionIndex * 0x10))] = nativeToBigEndian(binaryData.length);
+					sectionIndex++;
+				}
+
 				binaryData ~= nativeToBigEndian(verticesPointer);
 				binaryData ~= nativeToBigEndian(model.vertices.length);
 				binaryData ~= nativeToBigEndian(polygonsPointer);
