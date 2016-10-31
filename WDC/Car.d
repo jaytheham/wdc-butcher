@@ -326,7 +326,6 @@ class Car : Drawable
 		modelToTextureMap[0x1F] = 23;
 		modelToTextureMap[0x20] = 24;
 		modelToTextureMap[0x21] = 25;
-		writeln(modelToTextureMap);
 
 		insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
@@ -502,7 +501,6 @@ class Car : Drawable
 			}
 			else
 			{
-				writeln(i);
 				assert(texture.length == 8, "Texture is not 8");
 				binaryData ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
 				insertedTexturePointer += i == 21 ? 8 : 0;
@@ -746,14 +744,8 @@ class Car : Drawable
 					                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "");
 					if (polygon.vertexIndices[3] != 0xFFFF)
 					{
-						//output.writeln("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
-						//                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
-
-						//                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
-						//                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "", " ",
-
-						output.write(                     " ", polygon.vertexIndices[3] + vertexOffest, "/-1/",
-						                     hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
+						output.write(" ", polygon.vertexIndices[3] + vertexOffest, "/-1/",
+						             hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
 					}
 					output.writeln("");
 					uvOffset += 4;
