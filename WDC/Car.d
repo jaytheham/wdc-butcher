@@ -48,7 +48,7 @@ class Car : Drawable
 		// Car 4 has an 0xA0 entry for all 0x29 model sections because they all have data
 		uint[0x29] modelToTextureMap;
 		// if a modelsection is empty (i.e. the roof ornament, it has an "empty" texture descriptor that uses no space)
-		// the 30th modelsection (model[1]section[0] has the size 8 texture always)
+		// sometimes they have a size of 8, often model[1]section[0] does
 		ubyte[][] textures;
 		Colour[][] fixedPalettes;
 		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET][3] palettes;
