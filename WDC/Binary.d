@@ -12,7 +12,7 @@ import std.stdio: File, writeln, writefln;
 
 import gfm.opengl;
 
-import wdc.car,
+import wdc.car, wdc.carFromBinaries,
 	   wdc.track,
 	   wdc.tools;
 
@@ -96,7 +96,7 @@ public:
 		int palettesCOffset = peek!int(binary[carAssetOffset + 0x34..carAssetOffset + 0x38]);
 
 		//write(format("%.2d car main zlib", carIndex), decompressZlibBlock(dataBlobOffset));
-		return new Car(decompressZlibBlock(dataBlobOffset),
+		return CarFromBinaries.convert(decompressZlibBlock(dataBlobOffset),
 		               decompressZlibBlock(textureBlobOffset),
 		               // assuming palettes are always 0x100 in size ...
 		               binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * carPaletteSize)],

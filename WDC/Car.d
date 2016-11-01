@@ -1,60 +1,60 @@
 module wdc.car;
 
-import std.stdio,	   std.array,	   std.file,
-	   std.format,	   std.bitmanip,   std.typecons,
-	   std.algorithm,
+import std.file,		std.bitmanip,		std.algorithm,
 	   camera,
-	   gfm.math,	   gfm.opengl,
-	   wdc.tools,	   wdc.drawable,   wdc.renderer,
-	   wdc.png,        wdc.carRenderer;
-// Convert Binary files from the ROM or 3D model files into a simple intermediate format
-// from which it can output ROM compatible binaries or 3D models
+	   gfm.math,		gfm.opengl,
+	   wdc.tools,		wdc.drawable,		wdc.renderer,
+       wdc.carRenderer;
+// Hold all information about a Car asset (and the ability to convert it to N64 binaries)
 class Car : Drawable
 {
-	ubyte[] binaryData;
-	ubyte[] binaryTextures;
-	ubyte[] binaryPalettes1;
-	ubyte[] binaryPalettes2;
-	ubyte[] binaryPalettes3;
-
 	private
 	{
 		CarRenderer renderer;
-
+	}
+	public
+	{
 		enum COLOURS_PER_PALETTE = 0x10;
 		enum PALETTES_PER_SET = 8;
-		enum OBJ_WHEEL_ID = "wheel_origins";
-		enum OBJ_LIGHT_ID = "light_origins";
-		const ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                                  0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
-		                                  2,2,2,2,2,2,2,2,2,2,2]; // cheat by saying second light of each pair uses lit palette
-
-		const string[] partNames = ["grill", "bonnet_l", "bonnet_r", "windscreen_f", "roof", "windscreen_b", "trunk",
-		                            "back", "wheel_well_fl", "wheel_well_fr", "wheel_well_bl", "wheel_well_br",
-		                            "door_l", "door_r", "windows_l", "windows_r", "spoiler", "undercarriage", "fake_wheels",
-		                            "headlight_l", "headlight_r", "taillight_l", "taillight_r",
-		                            "wingmirror_l", "wingmirror_r", "roof_ornament", "LoD1", "LoD2", "LoD3"];
+		const static string OBJ_WHEEL_ID = "wheel_origins";
+		const static string OBJ_LIGHT_ID = "light_origins";
+		const static ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
+		                                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
+		                                         2,2,2,2,2,2,2,2,2,2,2];
+		                                         // cheat by saying second light of each pair uses lit palette
+		const static string[] partNames = [
+			"grill",		"bonnet_l",		"bonnet_r",		"windscreen_f",		"roof",			"windscreen_b",
+			"trunk",		"back",			"wheel_well_fl","wheel_well_fr",	"wheel_well_bl","wheel_well_br",
+			"door_l",		"door_r",		"windows_l",	"windows_r",		"spoiler",		"undercarriage",
+			"fake_wheels",	"headlight_l",	"headlight_r",	"taillight_l",		"taillight_r",	"wingmirror_l",
+			"wingmirror_r", "roof_ornament","LoD1",			"LoD2",				"LoD3"];
 		// cars 23, 24, 25, 26, 27, 30, 31, 32 have a roof ornament
 		// cars 9, 10, 11, 20, 21, 22 have fake wheels
 		// 30, 31, 32 have no under carriage
+
+		ubyte[] binaryData;
+		ubyte[] binaryTextures;
+		ubyte[] binaryPalettes1;
+		ubyte[] binaryPalettes2;
+		ubyte[] binaryPalettes3;
 
 		float unknown1 = 0.5;
 		float carCameraYOffset = 0.6;
 		// Both these are Z X Y in the binaries
 		// but the vec3fs are kept X Y Z
+		// Wheels are in order: front L, front R, rear L, rear R
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
-		uint[0x22] modelToTextureMap;
-		ubyte[][] bodyTextures;
+		// Car 4 has an 0xA0 entry for all 0x29 model sections because they all have data
+		uint[0x29] modelToTextureMap;
+		// if a modelsection is empty (i.e. the roof ornament, it has an "empty" texture descriptor that uses no space)
+		// the 30th modelsection (model[1]section[0] has the size 8 texture always)
+		ubyte[][] textures;
 		Colour[][] fixedPalettes;
-		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesA;
-		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesB;
-		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] palettesC;
+		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET][3] palettes;
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[10] models;
-	}
-	public
-	{
+	
 		union Colour
 		{
 			ushort whole;
@@ -105,258 +105,7 @@ class Car : Drawable
 		}
 	}
 
-	this(ubyte[] dataBlob, ubyte[] textureSource, ubyte[] inPalettesA, ubyte[] inPalettesB, ubyte[] inPalettesC)
-	{
-		binaryData = dataBlob;
-		binaryTextures = textureSource;
-		binaryPalettes1 = inPalettesA;
-		binaryPalettes2 = inPalettesB;
-		binaryPalettes3 = inPalettesC;
-
-		unknown1 = binaryData.readFloat(0x8);
-		carCameraYOffset = binaryData.readFloat(0xC);
-		wheelOrigins = [vec3f(binaryData.readFloat(0x18),binaryData.readFloat(0x1C),binaryData.readFloat(0x14)),
-		                vec3f(binaryData.readFloat(0x24),binaryData.readFloat(0x28),binaryData.readFloat(0x20)),
-		                vec3f(binaryData.readFloat(0x30),binaryData.readFloat(0x34),binaryData.readFloat(0x2C)),
-		                vec3f(binaryData.readFloat(0x3C),binaryData.readFloat(0x40),binaryData.readFloat(0x38))];
-		lightOrigins = [vec3f(binaryData.readFloat(0x48),binaryData.readFloat(0x4C),binaryData.readFloat(0x44)),
-		                vec3f(binaryData.readFloat(0x54),binaryData.readFloat(0x58),binaryData.readFloat(0x50)),
-		                vec3f(binaryData.readFloat(0x60),binaryData.readFloat(0x64),binaryData.readFloat(0x5C)),
-		                vec3f(binaryData.readFloat(0x6C),binaryData.readFloat(0x70),binaryData.readFloat(0x68))];
-
-		parseBinaryTextures();
-
-		parseBinaryPalettes(inPalettesA, palettesA);
-		parseBinaryPalettes(inPalettesB, palettesB);
-		parseBinaryPalettes(inPalettesC, palettesC);
-
-		parseBinaryFixedPalettes();
-
-		parseBinaryModels();
-	}
-
-	this(string objFilePath)
-	{
-		import std.string, std.conv;
-		
-		int currentModel = 0xffff, currentModelSection,
-		    totalVertexCount = 0, sectionVertexCount = 0,
-		    normalOffset, sectionNormalCount,
-		    uvOffset;
-		string line;
-		string[] lineParts, materialPaths;
-		TextureCoordinate[] sectionUvs;
-		string[][] faces;
-		File input = File(objFilePath, "r");
-
-		void facesToPolygons()
-		{
-			ushort convertVertexPointer(string[] point)
-			{
-				return cast(ushort)((parse!uint(point[0]) - totalVertexCount - 1) + (models[currentModel].vertices.length - sectionVertexCount));
-			}
-			ushort convertNormalPointer(string[] point)
-			{
-				return cast(ushort)((parse!uint(point[2]) - normalOffset - 1) + (models[currentModel].normals.length - sectionNormalCount));
-			}
-			string[] point1, point2, point3, point4;
-			foreach (face; faces)
-			{
-				point1 = split(face[0], "/");
-				point2 = split(face[1], "/");
-				point3 = split(face[2], "/");
-				point4 = face.length == 4 ? split(face[3], "/") : null;
-				models[currentModel].modelSections[currentModelSection].polygons ~= Polygon(
-					[
-					convertVertexPointer(point1),
-					convertVertexPointer(point2),
-					convertVertexPointer(point3),
-					point4 != null ? convertVertexPointer(point4) : cast(ushort)0xFFFF
-					],
-					[
-					sectionUvs[parse!uint(point1[1]) - uvOffset - 1],
-					sectionUvs[parse!uint(point2[1]) - uvOffset - 1],
-					sectionUvs[parse!uint(point3[1]) - uvOffset - 1],
-					point4 != null ? sectionUvs[parse!uint(point4[1]) - uvOffset - 1] : TextureCoordinate(0,0)
-					],
-					[
-					convertNormalPointer(point1),
-					convertNormalPointer(point2),
-					convertNormalPointer(point3),
-					point4 != null ? convertNormalPointer(point4) : 0
-					]
-					);
-			}
-		}
-
-		while((line = input.readln()) !is null)
-		{
-			line = chomp(line);
-			
-			if (line.startsWith("o "))
-			{
-				if (currentModel != 0xffff)
-				{
-					facesToPolygons();
-				}
-				lineParts = split(line[2..$], "-");
-				if (lineParts[0] == OBJ_WHEEL_ID)
-				{
-					foreach (i; 0..4)
-					{
-						line = input.readln();
-						assert(line.startsWith("v "), "Less than four wheel origin vertices");
-						lineParts = split(line[2..$], " ");
-						wheelOrigins[i] = vec3f(parse!float(lineParts[0]),
-						                        parse!float(lineParts[1]),
-						                        parse!float(lineParts[2]));
-					}
-					totalVertexCount += 4;
-					currentModel = 0xffff;
-				}
-				else if (lineParts[0] == OBJ_LIGHT_ID)
-				{
-					foreach (i; 0..4)
-					{
-						line = input.readln();
-						assert(line.startsWith("v "), "Less than four light origin vertices");
-						lineParts = split(line[2..$], " ");
-						lightOrigins[i] = vec3f(parse!float(lineParts[0]),
-						                        parse!float(lineParts[1]),
-						                        parse!float(lineParts[2]));
-					}
-					totalVertexCount += 4;
-					currentModel = 0xffff;
-				}
-				else if (lineParts.length >= 2)
-				{
-					// new section
-					currentModel = parse!int(lineParts[0]);
-					currentModelSection = parse!int(lineParts[1]);
-					while (models[currentModel].modelSections.length <= currentModelSection)
-					{
-						models[currentModel].modelSections ~= ModelSection();
-					}
-					totalVertexCount += sectionVertexCount;
-					normalOffset += sectionNormalCount;
-					uvOffset += sectionUvs.length;
-					sectionNormalCount = 0;
-					sectionVertexCount = 0;
-
-					sectionUvs.length = 0;
-					faces.length = 0;
-				}
-			}
-			else if (line.startsWith("v "))
-			{
-				lineParts = split(line[2..$], " ");
-				models[currentModel].vertices ~= Vertex(
-					                                    cast(short)(parse!float(lineParts[2]) * 256),
-					                                    cast(short)(parse!float(lineParts[0]) * 256),
-					                                    cast(short)(parse!float(lineParts[1]) * 256)
-					                                   );
-				sectionVertexCount++;
-			}
-			else if (line.startsWith("vn "))
-			{
-				lineParts = split(line[3..$], " ");
-				models[currentModel].normals ~= Normal(
-					                                   cast(byte)(parse!float(lineParts[2]) * 127),
-					                                   cast(byte)(parse!float(lineParts[0]) * 127),
-					                                   cast(byte)(parse!float(lineParts[1]) * 127)
-					                                  );
-				sectionNormalCount++;
-			}
-			else if (line.startsWith("vt "))
-			{
-				lineParts = split(line[3..$], " ");
-				sectionUvs ~= TextureCoordinate(
-					                            cast(byte)(parse!float(lineParts[0]) * 80),
-					                            cast(byte)(parse!float(lineParts[1]) * 38)
-					                           );
-			}
-			else if (line.startsWith("f "))
-			{
-				lineParts = split(line[2..$], " ");
-				faces ~= lineParts;
-			}
-			else if (line.startsWith("mtllib "))
-			{
-				lineParts = split(line, " ");
-				if (canFind(lineParts[1], '\\') || canFind(lineParts[1], '/'))
-				{
-					materialPaths = texturePathsFromMtl(lineParts[1]);
-				}
-				else
-				{
-					int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
-					string materialLibraryPath = objFilePath[0..folderEndIndex + 1] ~ lineParts[1];
-					materialPaths = texturePathsFromMtl(materialLibraryPath);
-				}
-				foreach (path; materialPaths)
-				{
-					if (path != "")
-					{
-						bodyTextures ~= Png.pngToWdcTexture(path);
-					}
-					else
-					{
-						bodyTextures ~= new ubyte[8];
-					}
-				}
-			}
-			else if (line.startsWith("usemtl "))
-			{
-				lineParts = split(line, " ");
-				int materialIndex = parse!int(lineParts[1]);
-				if (currentModel == 0)
-				{
-					modelToTextureMap[currentModelSection] = materialIndex;
-					palettesA[MODEL_TO_PALETTE[currentModelSection]] = Png.pngToWdcPalette(materialPaths[materialIndex]);
-				}
-			}
-		}
-		facesToPolygons();
-		
-		bodyTextures ~= Png.pngToWdcTexture("output\\0_car22_0.png");
-		bodyTextures ~= Png.pngToWdcTexture("output\\0_car23_0.png");
-		bodyTextures ~= Png.pngToWdcTexture("output\\0_car24_0.png");
-		bodyTextures ~= Png.pngToWdcTexture("output\\0_car25_0.png");
-		modelToTextureMap[0x1E] = 22;
-		modelToTextureMap[0x1F] = 23;
-		modelToTextureMap[0x20] = 24;
-		modelToTextureMap[0x21] = 25;
-
-		insertedPaletteIndices = [0,1,2,3,4,5,6,7];
-		input.close();
-		//removeRepeatedVertices();
-		generateBinaries();
-	}
-
-	private string[] texturePathsFromMtl(string mtlLibraryPath)
-	{
-		import std.conv, std.string;
-
-		string[] texturePaths = new string[0x16], lineParts;
-		int textureNum;
-		string line;
-		File input = File(mtlLibraryPath, "r");
-		while((line = input.readln()) !is null)
-		{
-			if (line.startsWith("newmtl "))
-			{
-				lineParts = split(line, " ");
-				textureNum = parse!int(lineParts[1]);
-			}
-			if (line.startsWith("map_Kd "))
-			{
-				lineParts = split(line, "map_Kd ");
-				texturePaths[textureNum] = chomp(lineParts[1]);
-			}
-		}
-		input.close();
-		return texturePaths;
-	}
+	this(){}
 
 	private void removeRepeatedVertices()
 	{
@@ -441,7 +190,7 @@ class Car : Drawable
 
 		uint paletteSize = PALETTES_PER_SET * COLOURS_PER_PALETTE * 2;
 		uint texturesSize = getTexturesSize();
-		uint textureDescriptorsSize = bodyTextures.length * 0x20;
+		uint textureDescriptorsSize = textures.length * 0x20;
 		
 		uint a0Start = FIXED_DATA_END + paletteSize + texturesSize + textureDescriptorsSize;
 		uint a0Count = modelToTextureMap.length;// + 4; // +4 moving wheel textures
@@ -456,10 +205,10 @@ class Car : Drawable
 		uint b4Start = a0Start + ((modelToTextureMap.length) * 4);
 		// 0xB4
 		binaryData ~= nativeToBigEndian(b4Start);
-		binaryData ~= [0,0,0,0xFF & bodyTextures.length];
+		binaryData ~= [0,0,0,0xFF & textures.length];
 		binaryData ~= [0,0,0,0,0,0,0,0,0,0,0,0];
 
-		uint c8Start = b4Start + (bodyTextures.length * 4) + (4 * 0x20);
+		uint c8Start = b4Start + (textures.length * 4) + (4 * 0x20);
 		// 0xC8
 		binaryData ~= nativeToBigEndian(c8Start);
 		binaryData ~= [0,0,0,0];
@@ -484,10 +233,10 @@ class Car : Drawable
 			binaryData ~= new ubyte[8 - binaryData.length % 8];
 		}
 		
-		uint[] textureDescriptorPointers = new uint[bodyTextures.length];
+		uint[] textureDescriptorPointers = new uint[textures.length];
 		uint insertedTexturePointer = FIXED_DATA_END + paletteSize;
 		// Body texture descriptors
-		foreach (i, texture; bodyTextures)
+		foreach (i, texture; textures)
 		{
 			textureDescriptorPointers[i] = binaryData.length;
 			binaryData ~= [0xFD, 0x10, 0, 0];
@@ -528,8 +277,8 @@ class Car : Drawable
 			binaryData ~= new ubyte[8 - binaryData.length % 8];
 		}
 		// Moving wheel textures:
-		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (bodyTextures.length - 4));
-		foreach (i, texture; bodyTextures[$-4..$])
+		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (textures.length - 4));
+		foreach (i, texture; textures[$-4..$])
 		{
 			textureDescriptorPointers[i] = binaryData.length;
 			binaryData ~= [0xFD, 0x10, 0, 0];
@@ -649,7 +398,7 @@ class Car : Drawable
 	private uint getTexturesSize()
 	{
 		uint size = 0;
-		foreach(texture; bodyTextures)
+		foreach(texture; textures)
 		{
 			size += texture.length;
 		}
@@ -664,321 +413,5 @@ class Car : Drawable
 	void draw(Camera camera, char[] keys)
 	{
 		renderer.draw(camera, keys);
-	}
-
-	void outputWavefrontObj()
-	{
-		import std.conv;
-		// Wheels are in order: front L, front R, rear L, rear R
-		if (!exists("output") || !("output".isDir))
-		{
-			mkdir("output");
-		}
-		outputTextures(palettesA);
-		outputTextures(palettesB, 1);
-		outputTextures(palettesC, 2);
-		File output = File("output/car.obj", "w");
-		int normalOffset = 1;
-		int vertexOffest = 1;
-		int uvOffset = 1;
-		output.writeln("mtllib car.mtl");
-		output.writeln("o ", OBJ_WHEEL_ID);
-		output.writeln("v ", wheelOrigins[0].x, " ", wheelOrigins[0].y, " ", wheelOrigins[0].z);
-		output.writeln("v ", wheelOrigins[1].x, " ", wheelOrigins[1].y, " ", wheelOrigins[1].z);
-		output.writeln("v ", wheelOrigins[2].x, " ", wheelOrigins[2].y, " ", wheelOrigins[2].z);
-		output.writeln("v ", wheelOrigins[3].x, " ", wheelOrigins[3].y, " ", wheelOrigins[3].z);
-		output.writeln("l 1 2 3 4 1");
-		vertexOffest += 4;
-
-		output.writeln("o ", OBJ_LIGHT_ID);
-		output.writeln("v ", lightOrigins[0].x, " ", lightOrigins[0].y, " ", lightOrigins[0].z);
-		output.writeln("v ", lightOrigins[1].x, " ", lightOrigins[1].y, " ", lightOrigins[1].z);
-		output.writeln("v ", lightOrigins[2].x, " ", lightOrigins[2].y, " ", lightOrigins[2].z);
-		output.writeln("v ", lightOrigins[3].x, " ", lightOrigins[3].y, " ", lightOrigins[3].z);
-		output.writeln("l ", vertexOffest, " ", vertexOffest + 1, " ", vertexOffest + 2, " ", vertexOffest + 3, " ", vertexOffest);
-		vertexOffest += 4;
-
-		bool hasNormals;
-		foreach (mIndex, currentModel; models)
-		{
-			foreach (vertex; currentModel.vertices)
-			{
-				output.writeln("v ", vertex.x / 256.0, " ",
-				                     vertex.y / 256.0, " ",
-				                     vertex.z / 256.0);
-			}
-			
-			foreach (normal; currentModel.normals)
-			{
-				output.writeln("vn ", normal.x / 127.0, " ",
-				                      normal.y / 127.0, " ",
-				                      normal.z / 127.0);
-			}
-
-			foreach (sIndex, ms; currentModel.modelSections)
-			{
-				if (mIndex == 0)
-				{
-					output.writeln("usemtl ", modelToTextureMap[sIndex]);
-					output.writefln("o %.2d-%.2d-%s", mIndex, sIndex, partNames[sIndex]);
-				}
-				else
-				{
-					output.writeln("usemtl ", 14);
-					output.writefln("o %.2d-%.2d", mIndex, sIndex);
-				}
-				hasNormals = currentModel.normals.length > 0;
-				foreach (polygon; ms.polygons)
-				{
-					foreach (uvi, uv; polygon.textureCoordinates)
-					{
-						output.writeln("vt ", uv.u / 80.0, " ", uv.v / 38.0);
-					}
-					output.write("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
-					                     hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
-
-					                     polygon.vertexIndices[1] + vertexOffest, "/-3/",
-					                     hasNormals ? to!string(polygon.normalIndices[1] + normalOffset) : "", " ",
-
-					                     polygon.vertexIndices[2] + vertexOffest, "/-2/",
-					                     hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "");
-					if (polygon.vertexIndices[3] != 0xFFFF)
-					{
-						output.write(" ", polygon.vertexIndices[3] + vertexOffest, "/-1/",
-						             hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
-					}
-					output.writeln("");
-					uvOffset += 4;
-				}
-			}
-			normalOffset += currentModel.normals.length;
-			vertexOffest += currentModel.vertices.length;
-		}
-	}
-
-	private void outputTextures(Colour[COLOURS_PER_PALETTE][] palettes, int paletteSet = 0)
-	{
-		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
-		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
-		
-		File materialLibraryFile = File("output/car.mtl", "w");
-		Colour[] curPalette;
-		int texNum, modelNum;
-
-		void writeTexture(ubyte[] textureBytes, int alternate)
-		{
-			materialLibraryFile.writeln("newmtl ", texNum);
-			materialLibraryFile.writeln("illum 0");
-			materialLibraryFile.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.png", 0, texNum, alternate));
-			
-			File textureFile = File(format("output/%d_car%.2d_%d.png", paletteSet, texNum, alternate), "wb");
-			curPalette = palettes[MODEL_TO_PALETTE[modelNum + alternate]];
-			textureFile.rawWrite(Png.wdcTextureToPng(curPalette, textureBytes, TEXTURE_WIDTH, TEXTURE_HEIGHT));
-			textureFile.close();
-		}
-
-		foreach (texIndex, texture; bodyTextures)
-		{
-			foreach (modelIndex, textureIndex; modelToTextureMap)
-			{
-				if (textureIndex == texIndex)
-				{
-					texNum = textureIndex;
-					modelNum = modelIndex;
-					break;
-				}
-			}
-			
-			if (texture.length != TEXTURE_SIZE_BYTES)
-			{
-				continue;
-			}
-			writeTexture(texture, 0);
-			// For the second of each light, we're outputting the lit version of the texture
-			if (modelNum == 19 || modelNum == 21)
-			{
-				writeTexture(texture, 1);
-			}
-		}
-		materialLibraryFile.close();
-	}
-
-	private void parseBinaryTextures()
-	{
-		int modelToTexturePointers = binaryData.readInt(0xA0);
-		int modelToTextureCount = binaryData.readInt(0xA8);
-		//modelToTextureMap.length = modelToTextureCount;
-
-		int textureDescriptorPointers = binaryData.readInt(0xB4);
-		int textureDescriptorCount = binaryData.readInt(0xB8);
-		int descriptorLocation;
-		int textureSizeInBytes;
-		int texturePosition = 0;
-
-		bodyTextures.length = textureDescriptorCount;
-		
-		foreach(index; 0..textureDescriptorCount)
-		{
-			descriptorLocation = binaryData.readInt(textureDescriptorPointers + (index * 4));
-			textureSizeInBytes = (((binaryData.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
-			bodyTextures[index] = binaryTextures[texturePosition..texturePosition + textureSizeInBytes];
-			if (textureSizeInBytes > 8)
-			{
-				wordSwapOddRows(bodyTextures[index], 40, 38);
-			}
-			texturePosition += textureSizeInBytes;
-			
-			foreach(mIndex; 0..modelToTextureCount)
-			{
-				if (binaryData.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
-				{
-					modelToTextureMap[mIndex] = index;
-				}
-			}
-		}
-		
-	}
-
-	private void wordSwapOddRows(ref ubyte[] rawTexture, int bytesWide, int textureHeight)
-	{
-		ubyte[4] tempBytes;
-		int curOffset;
-		
-		assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
-
-		for (int row = 0; row < textureHeight; row++)
-		{
-			if (row % 2 == 1)
-			{
-				curOffset = row * bytesWide;
-				for (int byteNum = 0; byteNum < bytesWide; byteNum += 8)
-				{
-					tempBytes[] = rawTexture[curOffset + byteNum..curOffset + byteNum + 4];
-					rawTexture[curOffset + byteNum..curOffset + byteNum + 4] = 
-						rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8];
-					rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
-				}
-			}
-		}
-	}
-
-	private void parseBinaryPalettes(ubyte[] binaryPaletteSource, ref Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET] destination)
-	{
-		foreach(index; 0..(COLOURS_PER_PALETTE * PALETTES_PER_SET))
-		{
-			destination[index / COLOURS_PER_PALETTE][index % COLOURS_PER_PALETTE] = Colour(binaryPaletteSource.readUshort(index * 2));
-		}
-	}
-
-	private void parseBinaryFixedPalettes()
-	{
-		int palettePointerPointer = 0x7C;
-
-		foreach(i; 0..PALETTES_PER_SET)
-		{
-			insertedPaletteIndices[i] = binaryData.readInt(palettePointerPointer);
-			palettePointerPointer += 4;
-		}
-
-		for(int palettePointer = 0x398;; palettePointer += 0x20)
-		{
-			if (binaryData.readInt(palettePointer) != 0)
-			{
-				// fixed palette
-				fixedPalettes ~= new Colour[COLOURS_PER_PALETTE];
-				foreach(i; 0..COLOURS_PER_PALETTE)
-				{
-					fixedPalettes[$ - 1][i] = Colour(binaryData.readUshort(palettePointer + (i * 2)));
-				}
-			}
-			else if (canFind(insertedPaletteIndices[], palettePointer))
-			{
-				// inserted palette
-				fixedPalettes ~= null;
-			}
-			else
-			{
-				break;
-			}
-		}
-		// set pointers relative to palette block index
-		foreach(i; 0..PALETTES_PER_SET)
-		{
-			insertedPaletteIndices[i] = (insertedPaletteIndices[i] - 0x398) / 0x20;
-		}
-	}
-
-	private void parseBinaryModels()
-	{
-		int nextModelSectionPointerSource = 0xF4;
-		int modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
-		int previousModelSectionPointer = 0;
-		int verticesPointer = 0, normalsPointer, polygonsPointer, verticesCount, normalsCount, polygonsCount;
-		int currentModelNum = -1;
-		Model currentModel;
-		ModelSection currentModelSection;
-		while (modelSectionPointer != 0)
-		{
-			if (binaryData.readInt(modelSectionPointer) == modelSectionPointer
-				|| modelSectionPointer == previousModelSectionPointer)
-			{
-				nextModelSectionPointerSource += 0x10;
-				modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
-				continue;
-			}
-			if (binaryData.readInt(modelSectionPointer) != verticesPointer)
-			{
-				verticesPointer = binaryData.readInt(modelSectionPointer);
-				verticesCount   = binaryData.readInt(modelSectionPointer + 4);
-				normalsPointer  = binaryData.readInt(modelSectionPointer + 32);
-				normalsCount    = binaryData.readInt(modelSectionPointer + 36);
-
-				currentModel = Model(new Vertex[verticesCount], new Normal[normalsCount]);
-
-				foreach(i; 0..verticesCount)
-				{
-					currentModel.vertices[i] = Vertex(binaryData.readShort(verticesPointer + 0 + (i * 6)),
-					                                  binaryData.readShort(verticesPointer + 2 + (i * 6)),
-					                                  binaryData.readShort(verticesPointer + 4 + (i * 6)));
-				}
-				foreach(i; 0..normalsCount)
-				{
-					currentModel.normals[i] = Normal(cast(byte)binaryData[normalsPointer + 0 + (i * 3)],
-					                                 cast(byte)binaryData[normalsPointer + 1 + (i * 3)],
-					                                 cast(byte)binaryData[normalsPointer + 2 + (i * 3)]);
-				}
-				currentModelNum++;
-				models[currentModelNum] = currentModel;
-			}
-			polygonsPointer = binaryData.readInt(modelSectionPointer + 8);
-			polygonsCount   = binaryData.readInt(modelSectionPointer + 12);
-			currentModelSection = ModelSection(new Polygon[polygonsCount]);
-			foreach (i; 0..polygonsCount)
-			{
-				currentModelSection.polygons[i] =
-					Polygon([binaryData.readUshort(polygonsPointer + 8  + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 10 + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 12 + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 14 + (i * 0x20))],
-                            [TextureCoordinate(cast(byte)binaryData[polygonsPointer + 16 + (i * 0x20)],
-                            	               cast(byte)binaryData[polygonsPointer + 17 + (i * 0x20)]),
-                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 18 + (i * 0x20)],
-                             	               cast(byte)binaryData[polygonsPointer + 19 + (i * 0x20)]),
-                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 20 + (i * 0x20)],
-                             	               cast(byte)binaryData[polygonsPointer + 21 + (i * 0x20)]),
-                             TextureCoordinate(cast(byte)binaryData[polygonsPointer + 22 + (i * 0x20)],
-                             	               cast(byte)binaryData[polygonsPointer + 23 + (i * 0x20)])],
-                            [binaryData.readUshort(polygonsPointer + 24 + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 26 + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 28 + (i * 0x20)),
-                             binaryData.readUshort(polygonsPointer + 30 + (i * 0x20))]
-                           );
-			}
-			models[currentModelNum].modelSections ~= currentModelSection;
-
-			nextModelSectionPointerSource += 0x10;
-			previousModelSectionPointer = modelSectionPointer;
-			modelSectionPointer = binaryData.readInt(nextModelSectionPointerSource);
-		}
 	}
 }

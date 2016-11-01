@@ -1,28 +1,11 @@
-import std.math,
-	std.conv,
-	std.stdio,
-	std.file,
-	std.string,
-	std.random,
-	std.format,
-	std.zlib,
+import std.math,	std.conv,	std.stdio,	std.file,
+	std.string,		std.random,	std.format,	std.zlib,
 	std.typecons,
-
 	core.thread,
-
-	gfm.logger,
-	gfm.sdl2,
-	gfm.math,
-	gfm.opengl,
-
-	wdc.car,
-	wdc.track,
-	wdc.drawable,
-	wdc.binary,
-
-	camera,
-	timekeeper,
-	test.drawer;
+	gfm.logger,		gfm.sdl2,	gfm.math,	gfm.opengl,
+	wdc.car,		wdc.carFromObj,			wdc.carToObj,
+	wdc.track,		wdc.drawable,			wdc.binary,
+	camera,	timekeeper,	test.drawer;
 
 private
 {
@@ -292,7 +275,7 @@ private bool extractCarObj(string[] args)
 	try
 	{
 		int carIndex = parse!int(args[1]);
-		binaryFile.getCar(carIndex).outputWavefrontObj();
+		CarToObj.convert(binaryFile.getCar(carIndex));
 		writefln("Car %d extracted to .obj file.", carIndex);
 	}
 	catch (ConvException e)
@@ -307,7 +290,7 @@ private bool importCarObj(string[] args)
 {
 	try
 	{
-		selectedObject = new Car(args[1]);
+		selectedObject = CarFromObj.convert(args[1]);
 	}
 	catch (Exception e)
 	{
