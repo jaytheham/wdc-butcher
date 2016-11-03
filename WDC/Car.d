@@ -6,6 +6,16 @@ import std.file,		std.bitmanip,		std.algorithm,
 	   wdc.tools,		wdc.drawable,		wdc.renderer,
        wdc.carRenderer;
 // Hold all information about a Car asset (and the ability to convert it to N64 binaries)
+union Colour
+{
+	ushort whole;
+	mixin(bitfields!(
+		ubyte, "alpha",		1,
+		ubyte,	"b",		5,
+		ubyte,	"g",		5,
+		ubyte,	"r",		5));
+}
+
 class Car : Drawable
 {
 	private
@@ -55,15 +65,7 @@ class Car : Drawable
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[10] models;
 	
-		union Colour
-		{
-			ushort whole;
-			mixin(bitfields!(
-				ubyte, "alpha",		1,
-				ubyte,	"b",		5,
-				ubyte,	"g",		5,
-				ubyte,	"r",		5));
-		}
+		
 
 		struct Model
 		{
