@@ -214,7 +214,7 @@ static class Png
 		}
 		else
 		{
-			writeln("File not found: ", filePath);
+			writeln("Warning: Failed to find texture file ", filePath);
 		}
 		return palette;
 	}

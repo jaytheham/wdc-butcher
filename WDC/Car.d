@@ -158,7 +158,7 @@ class Car : Drawable
 		}
 	}
 
-	private void generateBinaries()
+	public void generateBinaries()
 	{
 		import std.zlib:compress;
 
@@ -210,7 +210,7 @@ class Car : Drawable
 		binaryData ~= [0,0,0,0xFF & textures.length];
 		binaryData ~= [0,0,0,0,0,0,0,0,0,0,0,0];
 
-		uint c8Start = b4Start + (textures.length * 4) + (4 * 0x20);
+		uint c8Start = padToXBytes(b4Start + (textures.length * 4) + (4 * 0x20), 8);
 		// 0xC8
 		binaryData ~= nativeToBigEndian(c8Start);
 		binaryData ~= [0,0,0,0];
@@ -237,6 +237,7 @@ class Car : Drawable
 		
 		uint[] textureDescriptorPointers = new uint[textures.length];
 		uint insertedTexturePointer = FIXED_DATA_END + paletteSize;
+		uint zeroLengthTextures = 0;
 		// Body texture descriptors
 		foreach (i, texture; textures)
 		{
@@ -252,9 +253,10 @@ class Car : Drawable
 			}
 			else
 			{
-				assert(texture.length == 8, "Texture is not 8");
+				assert(texture.length == 0, "Texture is not 0");
 				binaryData ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
-				insertedTexturePointer += i == 21 ? 8 : 0;
+				zeroLengthTextures++;
+				//insertedTexturePointer += i == 21 ? 8 : 0;
 			}
 			
 			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
@@ -279,7 +281,7 @@ class Car : Drawable
 			binaryData ~= new ubyte[8 - binaryData.length % 8];
 		}
 		// Moving wheel textures:
-		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (textures.length - 4));
+		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (textures.length - (4 + zeroLengthTextures)));
 		foreach (i, texture; textures[$-4..$])
 		{
 			textureDescriptorPointers[i] = binaryData.length;
@@ -395,6 +397,15 @@ class Car : Drawable
 		}
 		outfile[0..4] = nativeToBigEndian(outfile.length);
 		std.file.write("myBinaryDataZlibBlock", outfile);
+	}
+
+	private uint padToXBytes(uint value, uint boundary)
+	{
+		if (value % boundary != 0)
+		{
+			value += boundary - (value % boundary);
+		}
+		return value;
 	}
 
 	private uint getTexturesSize()
