@@ -56,7 +56,8 @@ class Car : Drawable
 		vec3f[4] wheelOrigins;
 		vec3f[4] lightOrigins;
 		// Car 4 has an 0xA0 entry for all 0x29 model sections because they all have data
-		uint[0x29] modelToTextureMap;
+		// this must be variable in size, but also correct (?) (car 0 must be 0x22)
+		uint[0x22] modelToTextureMap;
 		// if a modelsection is empty (i.e. the roof ornament, it has an "empty" texture descriptor that uses no space)
 		// sometimes they have a size of 8, often model[1]section[0] does
 		ubyte[][] textures;
@@ -253,10 +254,9 @@ class Car : Drawable
 			}
 			else
 			{
-				assert(texture.length == 0, "Texture is not 0");
+				assert(texture.length == 8, "Texture is not 8");
 				binaryData ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
 				zeroLengthTextures++;
-				//insertedTexturePointer += i == 21 ? 8 : 0;
 			}
 			
 			binaryData ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];

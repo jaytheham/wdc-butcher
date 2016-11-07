@@ -169,7 +169,9 @@ static class CarFromObj
 					}
 					else
 					{
-						car.textures ~= new ubyte[0]; // TODO: any difference having this 0 or 8?
+						// it seems all 'missing' textures can be 8
+						// but only some can be 0, how to tell?
+						car.textures ~= new ubyte[8];
 					}
 				}
 			}
@@ -190,10 +192,10 @@ static class CarFromObj
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_0.png");
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_0.png");
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_0.png");
-		car.modelToTextureMap[0x1D] = car.textures.length - 4; // TODO: check this is correct
-		car.modelToTextureMap[0x1E] = car.textures.length - 3;
-		car.modelToTextureMap[0x1F] = car.textures.length - 2;
-		car.modelToTextureMap[0x20] = car.textures.length - 1;
+		car.modelToTextureMap[0x1E] = 22;
+		car.modelToTextureMap[0x1F] = 23;
+		car.modelToTextureMap[0x20] = 24;
+		car.modelToTextureMap[0x21] = 25;
 
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
