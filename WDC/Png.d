@@ -179,7 +179,7 @@ static class Png
 			uint position = chunkSize + 20;
 			ubyte[4] chunkName;
 			ubyte[] colours;
-			ubyte[] alphas;
+			ubyte[] alphas = new ubyte[16];
 			while (true)
 			{
 				input.seek(position);
@@ -189,10 +189,18 @@ static class Png
 				if (chunkName == ['P','L','T','E'])
 				{
 					colours = input.rawRead(new ubyte[chunkSize]);
+					while (colours.length < (16 * 3))
+					{
+						colours ~= [0,0,0];
+					}
 				}
 				else if (chunkName == ['t','R','N','S'])
 				{
 					alphas = input.rawRead(new ubyte[chunkSize]);
+					while (alphas.length < 16)
+					{
+						alphas ~= 1;
+					}
 				}
 				else if (chunkName == ['I','E','N','D'])
 				{
