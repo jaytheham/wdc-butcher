@@ -9,11 +9,11 @@ static class CarFromBinaries
 	public static Car convert(ubyte[] binary, ubyte[] binaryTextures, ubyte[] inPalettesA, ubyte[] inPalettesB, ubyte[] inPalettesC)
 	{
 		Car car = new Car();
-		car.binaryData = binary;
-		car.binaryTextures = binaryTextures;
-		car.binaryPalettes1 = inPalettesA;
-		car.binaryPalettes2 = inPalettesB;
-		car.binaryPalettes3 = inPalettesC;
+		car.modelsBinary = binary;
+		car.texturesBinary = binaryTextures;
+		car.palettes1Binary = inPalettesA;
+		car.palettes2Binary = inPalettesB;
+		car.palettes3Binary = inPalettesC;
 
 		car.unknown1 = binary.readFloat(0x8);
 		car.carCameraYOffset = binary.readFloat(0xC);

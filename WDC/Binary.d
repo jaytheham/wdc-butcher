@@ -19,35 +19,44 @@ import wdc.car, wdc.carFromBinaries,
 class Binary
 {
 
-//private:
-
-	enum RegionType { PAL, NTSC };
+private:
 	enum assetsStringOffset = 0xc00;
+	enum MY_INSERT_ZONE = 0xFE0000;
 
-	uint[RegionType] carAssetsOffset;
+	uint carAssetsPointer;
 	enum carAssetsSize = 0x80;
 	enum carPaletteSize = 0x20;
 	enum carInsertedPalettes = 8;
 
-	uint[RegionType] trackAssetsOffset;
+	uint trackAssetsPointer;
 	enum trackAssetsSize = 0x44;
 
-	RegionType region;
 	ubyte[] binary;
 	ubyte[] curTrackData;
 
-	pure void setupArrays()
+	CarAsset[35] carAssets;
+
+	struct CarAsset
 	{
-		carAssetsOffset = [ RegionType.PAL : 0x83620, RegionType.NTSC : 0x81c30];
-		trackAssetsOffset = [ RegionType.PAL : 0x92f40, RegionType.NTSC : 0x91550];
+		uint nameRamPointer;
+		ubyte[16] blank;
+		uint modelZlib;
+		uint modelZlibEnd;
+		uint textureZlib;
+		uint textureZlibEnd;
+		uint palette1;
+		uint palette1End;
+		uint palette2;
+		uint palette2End;
+		uint palette3;
+		uint palette3End;
+		ubyte[68] notdone;
 	}
 
 public:
 
 	this(string filePath)
 	{
-		setupArrays();
-
 		File binaryHandle = File(filePath, "r");
 		binary.length = cast(uint)binaryHandle.size;
 		binaryHandle.rawRead(binary);
@@ -55,11 +64,13 @@ public:
 
 		enforceBigEndian();
 
-		region = binary[0x3e] == 'E' ? RegionType.NTSC : RegionType.PAL;
+		carAssetsPointer = binary[0x3e] == 'E' ? 0x81c30 : 0x83620;
+		loadCarAssets();
+		trackAssetsPointer = binary[0x3e] == 'E' ? 0x91550 : 0x92f40;
 
 		writeln("Loaded ROM:");
 		writeln(cast(char[])binary[0x20..0x34]);
-		writefln("Version detected as %s", region);
+		writefln("Version detected as %s", (binary[0x3e] == 'E' ? "NTSC" : "PAL"));
 	}
 
 	char[][] getCarList()
@@ -68,11 +79,11 @@ public:
 		int nameSize;
 		uint nameOffset;
 		char[][] carNames;
-		while(binary[carAssetsOffset[region] + offset] == 0x80)
+		while(binary[carAssetsPointer + offset] == 0x80)
 		{
-			nameOffset = peek!int(binary[carAssetsOffset[region] + offset
+			nameOffset = peek!int(binary[carAssetsPointer + offset
 			                             ..
-			                             carAssetsOffset[region] + offset + 4])
+			                             carAssetsPointer + offset + 4])
 						 + assetsStringOffset;
 			nameOffset &= 0x0fffffff;
 			nameSize = 0;
@@ -88,7 +99,7 @@ public:
 
 	Car getCar(int carIndex)
 	{
-		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * carIndex;
+		int carAssetOffset = carAssetsPointer + carAssetsSize * carIndex;
 		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
 		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x1c..carAssetOffset + 0x20]);
 		int palettesAOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
@@ -104,17 +115,80 @@ public:
 		               binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * carPaletteSize)]);
 	}
 
+	void insertCar(Car car, int carIndex)
+	{
+		uint currentCarModelSize = carAssets[carIndex].modelZlibEnd - carAssets[carIndex].modelZlib;
+		uint currentCarTextureSize = carAssets[carIndex].textureZlibEnd - carAssets[carIndex].textureZlib;
+		uint move;
+
+		if (carAssets[carIndex].modelZlib < MY_INSERT_ZONE)
+		{
+			move = currentCarModelSize + currentCarTextureSize;
+		}
+		else
+		{
+			move = (car.modelsZlib.length + car.texturesZlib.length) - (currentCarModelSize + currentCarTextureSize);
+		}
+
+		if (move == 0)
+		{
+			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
+			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
+		}
+		else if (move < 0)
+		{
+			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
+			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
+			foreach (index, asset; carAssets[carIndex + 1..$])
+			{
+				if (asset.modelZlib >= MY_INSERT_ZONE)
+				{
+					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = binary[asset.modelZlib..asset.textureZlibEnd];
+				}
+			}
+		}
+		else if (move > 0)
+		{
+			foreach_reverse (index, asset; carAssets[carIndex + 1..$])
+			{
+				if (asset.modelZlib >= MY_INSERT_ZONE)
+				{
+					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = binary[asset.modelZlib..asset.textureZlibEnd];
+				}
+			}
+			uint highestEnd = 0;
+			foreach (index, asset; carAssets[0..carIndex])
+			{
+				highestEnd = asset.textureZlibEnd > highestEnd ? asset.textureZlibEnd : 0;
+			}
+			if (highestEnd < MY_INSERT_ZONE)
+			{
+				highestEnd = MY_INSERT_ZONE;
+			}
+			carAssets[carIndex].modelZlib = highestEnd;
+			carAssets[carIndex].modelZlibEnd = highestEnd + car.modelsZlib.length;
+			carAssets[carIndex].textureZlib = highestEnd + car.modelsZlib.length;
+			carAssets[carIndex].textureZlibEnd = highestEnd + car.modelsZlib.length + car.texturesZlib.length;
+			updateBinaryCarAssets();
+			// TODO, it seems my textures bork it
+			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
+			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
+		}
+		//updateChecksum();
+		std.file.write("injectedRome", binary);
+	}
+
 	char[][] getTrackList()
 	{
 		int offset = 0;
 		int nameSize;
 		uint nameOffset;
 		char[][] trackNames;
-		while(binary[trackAssetsOffset[region] + offset] == 0x80)
+		while(binary[trackAssetsPointer + offset] == 0x80)
 		{
-			nameOffset = peek!int(binary[trackAssetsOffset[region] + offset
+			nameOffset = peek!int(binary[trackAssetsPointer + offset
 										 ..
-										 trackAssetsOffset[region] + offset + 4])
+										 trackAssetsPointer + offset + 4])
 						 + assetsStringOffset;
 			nameOffset &= 0xfffffff;
 			nameSize = 0;
@@ -131,7 +205,7 @@ public:
 	Track getTrack(int trackIndex, int trackVariation)
 	{
 		// get first zlib from tracks table
-		int trackAsset = trackAssetsOffset[region] + (trackAssetsSize * trackIndex);
+		int trackAsset = trackAssetsPointer + (trackAssetsSize * trackIndex);
 		int zlibOffset = readInt(binary, trackAsset + 0x14);
 		int firstZlibEnd = readInt(binary, zlibOffset) + zlibOffset;
 
@@ -694,7 +768,7 @@ public:
 		}
 		chdir(outputDir);
 
-		int carAssetOffset = carAssetsOffset[region] + carAssetsSize * index;
+		int carAssetOffset = carAssetsPointer + carAssetsSize * index;
 		int offset, endOffset;
 		int wordNum = 5;
 
@@ -728,7 +802,7 @@ public:
 		}
 		chdir(outputDir);
 
-		int trackAssetOffset = trackAssetsOffset[region] + trackAssetsSize * index;
+		int trackAssetOffset = trackAssetsPointer + trackAssetsSize * index;
 		int offset;
 
 		offset = peek!int(binary[trackAssetOffset + 0x14..trackAssetOffset + 0x14 + 4]);
@@ -768,12 +842,39 @@ public:
 		return output;
 	}
 
-	// replaceCar
-	// replaceTrack
-	// deleteCar?
-	// addcar?
-
 private:
+	void loadCarAssets()
+	{
+		ubyte[] assetBytes = binary[carAssetsPointer..carAssetsPointer + (0x80 * carAssets.length)];
+		auto structPointer = cast(CarAsset*)assetBytes.ptr;
+		carAssets = structPointer[0..carAssets.length];
+		foreach (index, ref carAsset; carAssets)
+		{
+			carAsset.nameRamPointer = swapEndian(carAsset.nameRamPointer);
+			carAsset.modelZlib = swapEndian(carAsset.modelZlib);
+			carAsset.modelZlibEnd = swapEndian(carAsset.modelZlibEnd);
+			carAsset.textureZlib = swapEndian(carAsset.textureZlib);
+			carAsset.textureZlibEnd = swapEndian(carAsset.textureZlibEnd);
+			carAsset.palette1 = swapEndian(carAsset.palette1);
+			carAsset.palette1End = swapEndian(carAsset.palette1End);
+			carAsset.palette2 = swapEndian(carAsset.palette2);
+			carAsset.palette2End = swapEndian(carAsset.palette2End);
+			carAsset.palette3 = swapEndian(carAsset.palette3);
+			carAsset.palette3End = swapEndian(carAsset.palette3End);
+		}
+	}
+
+	void updateBinaryCarAssets()
+	{
+		foreach (index, asset; carAssets)
+		{
+			binary[carAssetsPointer + (index * 0x80) + 0x14..carAssetsPointer + (index * 0x80) + 0x18] = nativeToBigEndian(asset.modelZlib);
+			binary[carAssetsPointer + (index * 0x80) + 0x18..carAssetsPointer + (index * 0x80) + 0x1C] = nativeToBigEndian(asset.modelZlibEnd);
+			//binary[carAssetsPointer + (index * 0x80) + 0x1C..carAssetsPointer + (index * 0x80) + 0x20] = nativeToBigEndian(asset.textureZlib);
+			//binary[carAssetsPointer + (index * 0x80) + 0x20..carAssetsPointer + (index * 0x80) + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
+		}
+	}
+
 	void enforceBigEndian()
 	{
 		//BE 8037 1240

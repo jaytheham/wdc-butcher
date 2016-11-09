@@ -291,6 +291,7 @@ private bool importCarObj(string[] args)
 	try
 	{
 		selectedObject = CarFromObj.convert(args[1]);
+		binaryFile.insertCar(cast(Car)selectedObject, parse!int(args[2]));
 	}
 	catch (Exception e)
 	{
@@ -379,7 +380,7 @@ private void setupCommands()
 	commands ~= UserCommand("e", "extract", "Extract and inflate zlib data {offset}");
 	commands ~= UserCommand("ecb", "extract-car-binary", "Extract car {index} binary data");
 	commands ~= UserCommand("eco", "extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
-	commands ~= UserCommand("ico", "import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/obj}", &importCarObj);
+	commands ~= UserCommand("ico", "import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/file.obj} {Car number to replace}", &importCarObj);
 	commands ~= UserCommand("etb", "extract-track", "Extract track {index} {variation} binary data");
 	commands ~= UserCommand("h", "help", "Display all available commands", "", &writeHelp);
 	commands ~= UserCommand("v", "version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });

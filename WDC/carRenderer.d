@@ -67,10 +67,10 @@ class CarRenderer : Renderer
 
 		vs = new VertexSpecification!Vertex(program);
 
-		data = source.binaryData;
+		data = source.modelsBinary;
 
-		insertPalettes(source.binaryPalettes1);
-		insertTextures(source.binaryTextures);
+		insertPalettes(source.palettes1Binary);
+		insertTextures(source.texturesBinary);
 
 		while (data.readInt(modelBlockPointerOffset + (numModelBlocks * 0x10)) > 0)
 		{
@@ -401,7 +401,7 @@ class CarRenderer : Renderer
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = src.binaryPalettes1[(modelToPalMap[modelIndex] * 0x20)..(modelToPalMap[modelIndex] * 0x20) + 0x20];
+		auto palette = src.palettes1Binary[(modelToPalMap[modelIndex] * 0x20)..(modelToPalMap[modelIndex] * 0x20) + 0x20];
 		while (h < maxHeight)
 		{
 			w = 0;
