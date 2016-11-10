@@ -68,3 +68,23 @@ void incrementShort(ubyte[] source, int location, int change)
 {
 	source.writeShort(location, cast(short)(source.readShort(location) + change));
 }
+
+void wordSwapOddRows(ref ubyte[] rawTexture, int bytesWide, int textureHeight)
+{
+	ubyte[4] tempBytes;
+	int curOffset;
+	
+	assert(bytesWide % 8 == 0, "ONLY WORKS FOR TEXTURES THAT ARE A MULTIPLE OF 16 WIDE!");
+
+	for (int row = 1; row < textureHeight; row += 2)
+	{
+		curOffset = row * bytesWide;
+		for (int byteNum = 0; byteNum < bytesWide; byteNum += 8)
+		{
+			tempBytes[] = rawTexture[curOffset + byteNum..curOffset + byteNum + 4];
+			rawTexture[curOffset + byteNum..curOffset + byteNum + 4] = 
+				rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8];
+			rawTexture[curOffset + byteNum + 4..curOffset + byteNum + 8] = tempBytes[];
+		}
+	}
+}

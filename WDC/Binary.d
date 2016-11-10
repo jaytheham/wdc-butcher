@@ -117,17 +117,20 @@ public:
 
 	void insertCar(Car car, int carIndex)
 	{
-		uint currentCarModelSize = carAssets[carIndex].modelZlibEnd - carAssets[carIndex].modelZlib;
-		uint currentCarTextureSize = carAssets[carIndex].textureZlibEnd - carAssets[carIndex].textureZlib;
+		uint oldSize = carAssets[carIndex].textureZlibEnd - carAssets[carIndex].modelZlib;
+		oldSize += oldSize % 4 != 0 ? 4 - (oldSize % 4) : 0;
+		uint paddedNewModelSize = car.modelsZlib.length + (car.modelsZlib.length % 4 != 0 ? 4 - (car.modelsZlib.length % 4) : 0);
+		uint paddedNewTextureSize = car.texturesZlib.length + (car.texturesZlib.length % 4 != 0 ? 4 - (car.texturesZlib.length % 4) : 0);
+		uint newSize = paddedNewModelSize + paddedNewTextureSize;
 		uint move;
 
 		if (carAssets[carIndex].modelZlib < MY_INSERT_ZONE)
 		{
-			move = currentCarModelSize + currentCarTextureSize;
+			move = newSize;
 		}
 		else
 		{
-			move = (car.modelsZlib.length + car.texturesZlib.length) - (currentCarModelSize + currentCarTextureSize);
+			move = newSize - oldSize;
 		}
 
 		if (move == 0)
@@ -165,10 +168,12 @@ public:
 			{
 				highestEnd = MY_INSERT_ZONE;
 			}
+			highestEnd += highestEnd % 4 != 0 ? 4 - (highestEnd % 4) : 0;
 			carAssets[carIndex].modelZlib = highestEnd;
 			carAssets[carIndex].modelZlibEnd = highestEnd + car.modelsZlib.length;
 			carAssets[carIndex].textureZlib = highestEnd + car.modelsZlib.length;
-			carAssets[carIndex].textureZlibEnd = highestEnd + car.modelsZlib.length + car.texturesZlib.length;
+			carAssets[carIndex].textureZlib += carAssets[carIndex].textureZlib % 4 != 0 ? 4 - (carAssets[carIndex].textureZlib % 4) : 0;
+			carAssets[carIndex].textureZlibEnd = carAssets[carIndex].textureZlib + car.texturesZlib.length;
 			updateBinaryCarAssets();
 			// TODO, it seems my textures bork it
 			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
@@ -870,8 +875,8 @@ private:
 		{
 			binary[carAssetsPointer + (index * 0x80) + 0x14..carAssetsPointer + (index * 0x80) + 0x18] = nativeToBigEndian(asset.modelZlib);
 			binary[carAssetsPointer + (index * 0x80) + 0x18..carAssetsPointer + (index * 0x80) + 0x1C] = nativeToBigEndian(asset.modelZlibEnd);
-			//binary[carAssetsPointer + (index * 0x80) + 0x1C..carAssetsPointer + (index * 0x80) + 0x20] = nativeToBigEndian(asset.textureZlib);
-			//binary[carAssetsPointer + (index * 0x80) + 0x20..carAssetsPointer + (index * 0x80) + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
+			binary[carAssetsPointer + (index * 0x80) + 0x1C..carAssetsPointer + (index * 0x80) + 0x20] = nativeToBigEndian(asset.textureZlib);
+			binary[carAssetsPointer + (index * 0x80) + 0x20..carAssetsPointer + (index * 0x80) + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
 		}
 	}
 

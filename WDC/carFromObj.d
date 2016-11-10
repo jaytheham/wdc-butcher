@@ -1,6 +1,6 @@
 module wdc.carFromObj;
 
-import wdc.car, wdc.png,
+import wdc.car, wdc.png, wdc.tools,
 	
 	   gfm.math,
 
@@ -166,6 +166,7 @@ static class CarFromObj
 					if (path != "")
 					{
 						car.textures ~= Png.pngToWdcTexture(path);
+						wordSwapOddRows(car.textures[$ - 1], 40, 38);
 					}
 					else
 					{

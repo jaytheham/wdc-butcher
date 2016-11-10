@@ -111,12 +111,13 @@ static class Png
 			input.seek(0x10);
 			uint width = peek!uint(input.rawRead(new ubyte[4]));
 			uint height = peek!uint(input.rawRead(new ubyte[4]));
+			uint widthInBytes = width / 2;
 			
-			assert(input.rawRead(new ubyte[1])[0] == 4, "Unsupported Bit Depth");
-			assert(input.rawRead(new ubyte[1])[0] == 3, "Unsupported Colour Type");
-			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Compression method");
-			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Filter Type");
-			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported Interlacing");
+			assert(input.rawRead(new ubyte[1])[0] == 4, "Unsupported png Bit Depth");
+			assert(input.rawRead(new ubyte[1])[0] == 3, "Unsupported png Colour Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported png Compression method");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported png Filter Type");
+			assert(input.rawRead(new ubyte[1])[0] == 0, "Unsupported png Interlacing");
 
 			uint position = chunkSize + 20;
 			ubyte[4] chunkName;
@@ -130,13 +131,11 @@ static class Png
 				{
 					ubyte[] idat = input.rawRead(new ubyte[chunkSize]);
 					ubyte[] rawData = cast(ubyte[])uncompress(idat);
-					uint byteNum = 0;
 					foreach_reverse (y; 0..height)
 					{
-						byteNum += 1; // filter
-						foreach (x; 0..(width / 2))
+						foreach (x; 0..widthInBytes)
 						{
-							texture ~= rawData[byteNum];
+							texture ~= rawData[y + 1 + (y * widthInBytes) + x];
 							byteNum += 1;
 						}
 					}
@@ -199,7 +198,7 @@ static class Png
 					alphas = input.rawRead(new ubyte[chunkSize]);
 					while (alphas.length < 16)
 					{
-						alphas ~= 1;
+						alphas ~= 0;
 					}
 				}
 				else if (chunkName == ['I','E','N','D'])

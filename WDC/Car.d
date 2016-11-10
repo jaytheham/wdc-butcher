@@ -238,7 +238,6 @@ class Car : Drawable
 		
 		uint[] textureDescriptorPointers = new uint[textures.length];
 		uint insertedTexturePointer = FIXED_DATA_END + paletteSize;
-		uint zeroLengthTextures = 0;
 		// Body texture descriptors
 		foreach (i, texture; textures)
 		{
@@ -256,7 +255,7 @@ class Car : Drawable
 			{
 				assert(texture.length == 8, "Texture is not 8");
 				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
-				zeroLengthTextures++;
+				insertedTexturePointer += texture.length;
 			}
 			texturesBinary ~= texture; // need to convert to correct line swapped format
 			
@@ -282,24 +281,28 @@ class Car : Drawable
 			modelsBinary ~= new ubyte[8 - modelsBinary.length % 8];
 		}
 		// Moving wheel textures:
-		insertedTexturePointer = FIXED_DATA_END + paletteSize + (((80 * 38) / 2) * (textures.length - (4 + zeroLengthTextures)));
+
+		uint temp;
 		foreach (i, texture; textures[$-4..$])
 		{
-			textureDescriptorPointers[i] = modelsBinary.length;
-			modelsBinary ~= [0xFD, 0x10, 0, 0];
-			modelsBinary ~= nativeToBigEndian(insertedTexturePointer);
-			modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
-			assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
-			modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
-			modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
+			//textureDescriptorPointers[i] = modelsBinary.length;
+			//modelsBinary ~= [0xFD, 0x10, 0, 0];
+			//modelsBinary ~= nativeToBigEndian(insertedTexturePointer);
+			//modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
+			//assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
+			//modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+			//modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
 
-			insertedTexturePointer += texture.length;
+			//insertedTexturePointer += texture.length;
+			temp = modelsBinary.length;
+			modelsBinary ~= modelsBinary[textureDescriptorPointers[(textures.length - 4) + i]..textureDescriptorPointers[(textures.length - 4) + i] + 0x20];
+			textureDescriptorPointers[(textures.length - 4) + i] = temp;
 		}
-		foreach (texturePointer; textureDescriptorPointers[0..4])
+		foreach (texturePointer; textureDescriptorPointers[$-4..$])
 		{
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
-		foreach (texturePointer; textureDescriptorPointers[0..4])
+		foreach (texturePointer; textureDescriptorPointers[$-4..$])
 		{
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
@@ -388,17 +391,17 @@ class Car : Drawable
 		uint offset = 0;
 		uint adder = 0x3E80;
 		ubyte[] outfile = [0,0,0,0];
-		outfile ~= nativeToBigEndian(modelsBinary.length);
-		while (offset < modelsBinary.length)
+		outfile ~= nativeToBigEndian(data.length);
+		while (offset < data.length)
 		{
-			if (offset + adder > modelsBinary.length)
+			if (offset + adder > data.length)
 			{
-				adder = modelsBinary.length - offset;
+				adder = data.length - offset;
 			}
-			//std.file.write(format("myBinaryDeflated %d", offset), compress(modelsBinary[offset..offset + adder]));
-			outfile ~= nativeToBigEndian(compress(modelsBinary[offset..offset + adder]).length);
-			outfile ~= compress(modelsBinary[offset..offset + adder]);
-			if (outfile.length % 2 == 1 && offset + adder != modelsBinary.length)
+			//std.file.write(format("myBinaryDeflated %d", offset), compress(data[offset..offset + adder]));
+			outfile ~= nativeToBigEndian(compress(data[offset..offset + adder]).length);
+			outfile ~= compress(data[offset..offset + adder]);
+			if (outfile.length % 2 == 1 && offset + adder != data.length)
 			{
 				outfile ~= [0];
 			}
