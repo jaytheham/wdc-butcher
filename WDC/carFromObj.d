@@ -187,12 +187,17 @@ static class CarFromObj
 		}
 		facesToPolygons();
 		
+		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_0.png");
+		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_0.png");
+		//wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_0.png");
+		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_0.png");
+		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.modelToTextureMap[0x1E] = 22;
 		car.modelToTextureMap[0x1F] = 23;
 		car.modelToTextureMap[0x20] = 24;

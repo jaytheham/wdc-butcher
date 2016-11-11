@@ -66,6 +66,7 @@ static class CarFromBinaries
 			car.textures[index] = binaryTextures[sourcePosition..sourcePosition + actualTextureSize];
 			if (actualTextureSize > 8)
 			{
+				// TODO remove this, so Car.textures are in the native format
 				wordSwapOddRows(car.textures[index], 40, 38);
 			}
 			sourcePosition += actualTextureSize;

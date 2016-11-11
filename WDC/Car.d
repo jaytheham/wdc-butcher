@@ -211,14 +211,15 @@ class Car : Drawable
 		modelsBinary ~= [0,0,0,0xFF & textures.length];
 		modelsBinary ~= [0,0,0,0,0,0,0,0,0,0,0,0];
 
-		uint c8Start = padToXBytes(b4Start + (textures.length * 4) + (4 * 0x20), 8);
+		uint dcStart = padToXBytes(b4Start + (textures.length * 4) + (4 * 0x20), 8);
+		uint c8Start = dcStart + (4 * 4);
 		// 0xC8
 		modelsBinary ~= nativeToBigEndian(c8Start);
 		modelsBinary ~= [0,0,0,0];
 		modelsBinary ~= [0,0,0,4]; // moving wheel textures
 		modelsBinary ~= [0,0,0,0,0,0,0,0];
 
-		uint dcStart = c8Start + (4 * 4);
+		
 		// 0xDC
 		modelsBinary ~= nativeToBigEndian(dcStart);
 		modelsBinary ~= [0,0,0,4];
@@ -245,19 +246,18 @@ class Car : Drawable
 			modelsBinary ~= [0xFD, 0x10, 0, 0];
 			modelsBinary ~= nativeToBigEndian(insertedTexturePointer);
 			modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
-			if (texture.length > 8)
+			if (texture.length == (80 * 38) / 2)
 			{
-				assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
 				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
 				insertedTexturePointer += texture.length;
 			}
 			else
 			{
-				assert(texture.length == 8, "Texture is not 8");
+				//assert(texture.length == 8, "Texture is not 8");
 				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
 				insertedTexturePointer += texture.length;
 			}
-			texturesBinary ~= texture; // need to convert to correct line swapped format
+			texturesBinary ~= texture;
 			
 			modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
 		}
@@ -380,6 +380,7 @@ class Car : Drawable
 		}
 
 		std.file.write("mymodelsBinary", modelsBinary);
+		std.file.write("myTexturesBinary", texturesBinary);
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
 		std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
