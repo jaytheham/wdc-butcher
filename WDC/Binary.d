@@ -179,7 +179,7 @@ public:
 			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
 			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
 		}
-		//updateChecksum();
+		updateChecksum();
 		std.file.write("injectedRome", binary);
 	}
 
@@ -878,6 +878,70 @@ private:
 			binary[carAssetsPointer + (index * 0x80) + 0x1C..carAssetsPointer + (index * 0x80) + 0x20] = nativeToBigEndian(asset.textureZlib);
 			binary[carAssetsPointer + (index * 0x80) + 0x20..carAssetsPointer + (index * 0x80) + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
 		}
+	}
+
+	void updateChecksum()
+	{
+		enum CHECKSUM_START = 0x1000;
+		enum CHECKSUM_LENGTH = 0x100000;
+		enum CHECKSUM_HEADERPOS = 0x10;
+		enum CHECKSUM_END = CHECKSUM_START + CHECKSUM_LENGTH;
+		enum CHECKSUM_STARTVALUE = 0xf8ca4ddc;
+
+		uint sum1, sum2, offset;
+		uint n;
+		uint v0, v1, a1, t7, t8, t6, a0, t5, t9;
+		uint t1, t2, t3, t4, a2, a3, s0;
+		uint checksumLength = CHECKSUM_LENGTH;
+
+		ubyte[] buffer;
+
+		s0 = CHECKSUM_STARTVALUE;
+		t2 = CHECKSUM_STARTVALUE;
+		t3 = CHECKSUM_STARTVALUE;
+		t4 = CHECKSUM_STARTVALUE;
+		a2 = CHECKSUM_STARTVALUE;
+		a3 = CHECKSUM_STARTVALUE;
+
+		offset = CHECKSUM_START;
+
+		while (offset != CHECKSUM_END) {
+			v0 = peek!uint(binary[offset..offset + 4]);
+			v1 = a3 + v0;
+			if (v1 < a3)
+			{
+				t2++;
+			}
+			a1 = v1;
+			v1 = v0 & 0x1f;
+			t7 = t5 - v1;
+			t8 = v0 >> t7;
+			t6 = v0 << v1;
+			a0 = t6 | t8;
+			a3 = a1;
+			t3 = t3 ^ v0;
+			s0 = s0 + a0;
+			if (a2 < v0)
+			{
+				t9 = a3 ^ v0;
+				a2 = t9 ^ a2;
+			}
+			else
+			{
+				a2 = a2 ^ a0;
+			}
+			t7 = v0 ^ s0;
+			offset += 4;
+			t4 = t7 + t4;
+		}
+		t6 = a3 ^ t2;
+		a3 = t6 ^ t3;
+		t8 = s0 ^ a2;
+		s0 = t8 ^ t4;
+
+		binary[0x10..0x14] = nativeToBigEndian(a3);
+		binary[0x14..0x18] = nativeToBigEndian(s0);
+		return;
 	}
 
 	void enforceBigEndian()

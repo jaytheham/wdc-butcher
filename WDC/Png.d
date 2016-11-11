@@ -136,7 +136,6 @@ static class Png
 						foreach (x; 0..widthInBytes)
 						{
 							texture ~= rawData[y + 1 + (y * widthInBytes) + x];
-							byteNum += 1;
 						}
 					}
 				}
