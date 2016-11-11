@@ -193,7 +193,7 @@ static class CarFromObj
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_0.png");
 		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_0.png");
-		//wordSwapOddRows(car.textures[$ - 1], 40, 38);
+		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_0.png");
 		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_0.png");

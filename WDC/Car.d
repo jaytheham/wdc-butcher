@@ -384,29 +384,32 @@ class Car : Drawable
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
 		std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
+		std.file.write("myTexturesBinaryZlibBlock", texturesZlib);
 	}
 
-	private ubyte[] binaryToZlibBlock(ubyte[] data)
+	private ubyte[] binaryToZlibBlock(ref ubyte[] data)
 	{
 		import std.zlib:compress;
 		uint offset = 0;
-		uint adder = 0x3E80;
+		uint chunkSize = 0x3E80;
+		ubyte[] buffer;
 		ubyte[] outfile = [0,0,0,0];
+
 		outfile ~= nativeToBigEndian(data.length);
 		while (offset < data.length)
 		{
-			if (offset + adder > data.length)
+			if (offset + chunkSize > data.length)
 			{
-				adder = data.length - offset;
+				chunkSize = data.length - offset;
 			}
-			//std.file.write(format("myBinaryDeflated %d", offset), compress(data[offset..offset + adder]));
-			outfile ~= nativeToBigEndian(compress(data[offset..offset + adder]).length);
-			outfile ~= compress(data[offset..offset + adder]);
-			if (outfile.length % 2 == 1 && offset + adder != data.length)
+			buffer = compress(data[offset..offset + chunkSize], 9);
+			outfile ~= nativeToBigEndian(buffer.length);
+			outfile ~= buffer;
+			if (outfile.length % 2 == 1)
 			{
 				outfile ~= [0];
 			}
-			offset += 0x3E80;
+			offset += chunkSize;
 		}
 		outfile[0..4] = nativeToBigEndian(outfile.length);
 		return outfile;
