@@ -69,7 +69,7 @@ static class CarFromBinaries
 				// TODO remove this, so Car.textures are in the native format
 				wordSwapOddRows(car.textures[index], 40, 38);
 			}
-			sourcePosition += actualTextureSize;
+			sourcePosition += textureDescriptorSize;//actualTextureSize;
 			foreach(mIndex; 0..modelToTextureCount)
 			{
 				if (binaryData.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
