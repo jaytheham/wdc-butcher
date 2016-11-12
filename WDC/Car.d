@@ -307,7 +307,7 @@ class Car : Drawable
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
 
-		uint verticesPointer, normalsPointer, polygonsPointer;
+		uint verticesPointer, normalsPointer, polygonsPointer, unkPointer;
 		uint sectionIndex = 0;
 
 		models[2].modelSections.length = 4;
@@ -328,6 +328,12 @@ class Car : Drawable
 				{
 					modelsBinary ~= [normal.z, normal.x, normal.y]; // OK not to cast?
 				}
+			}
+
+			if (m == 1)
+			{
+				unkPointer = modelsBinary.length;
+				modelsBinary ~= [0,0,0,0xFF];
 			}
 
 			if (modelsBinary.length % 16 != 0) // pad to next doubleword
@@ -354,10 +360,10 @@ class Car : Drawable
 					modelsBinary ~= polygon.textureCoordinates[2].v;
 					modelsBinary ~= polygon.textureCoordinates[3].u;
 					modelsBinary ~= polygon.textureCoordinates[3].v;
-					modelsBinary ~= nativeToBigEndian(polygon.normalIndices[0]);
-					modelsBinary ~= nativeToBigEndian(polygon.normalIndices[1]);
-					modelsBinary ~= nativeToBigEndian(polygon.normalIndices[2]);
-					modelsBinary ~= nativeToBigEndian(polygon.normalIndices[3]);
+					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[0] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[1] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[2] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[3] : cast(ushort)0);
 				}
 				
 				foreach (nothing; 0..(m == 1 ? 4 : 1))
@@ -370,10 +376,28 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(model.vertices.length);
 				modelsBinary ~= nativeToBigEndian(polygonsPointer);
 				modelsBinary ~= nativeToBigEndian(section.polygons.length);
-				modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
-				modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
-				modelsBinary ~= nativeToBigEndian(normalsPointer);
-				modelsBinary ~= nativeToBigEndian(model.normals.length);
+				if (m == 1)
+				{
+					modelsBinary ~= nativeToBigEndian(unkPointer);
+					modelsBinary ~= [0,0,0,0]; // Not used right?
+					modelsBinary ~= nativeToBigEndian(unkPointer);
+					modelsBinary ~= [0,0,0,1]; // Not used right?
+				}
+				else
+				{
+					modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
+					modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
+				}
+				
+				if (m == 0)
+				{
+					modelsBinary ~= nativeToBigEndian(normalsPointer);
+					modelsBinary ~= nativeToBigEndian(model.normals.length);
+				}
+				else
+				{
+					modelsBinary ~= [0,0,0,0, 0,0,0,0];
+				}
 				modelsBinary ~= [0,0,0,0, 0,0,0,0]; // padding
 			}
 			
