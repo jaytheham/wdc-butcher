@@ -181,8 +181,15 @@ static class CarFromObj
 				lineParts = split(line, " ");
 				int materialIndex = parse!int(lineParts[1]);
 				car.modelToTextureMap[modelSection] = materialIndex;
-				car.palettes[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(materialPaths[materialIndex]);
-				// TODO: Look for alternate palettes somehow
+				car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(materialPaths[materialIndex]);
+
+				int fileNameStart = lastIndexOf(materialPaths[materialIndex], '/');
+				fileNameStart = fileNameStart == -1 ? lastIndexOf(materialPaths[materialIndex], '\\') : fileNameStart;
+				fileNameStart = fileNameStart == -1 ? 1 : fileNameStart + 1;
+				string sourcePath = materialPaths[materialIndex][0..fileNameStart];
+				string fileEnd = materialPaths[materialIndex][fileNameStart + 1..$];
+				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "1" ~ fileEnd);
+				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd);
 			}
 		}
 		facesToPolygons();

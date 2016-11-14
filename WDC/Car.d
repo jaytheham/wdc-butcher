@@ -46,9 +46,7 @@ class Car : Drawable
 		ubyte[] modelsZlib;
 		ubyte[] texturesBinary;
 		ubyte[] texturesZlib;
-		ubyte[] palettes1Binary;
-		ubyte[] palettes2Binary;
-		ubyte[] palettes3Binary;
+		ubyte[][3] paletteBinaries;
 
 		float unknown1 = 0.5;
 		float carCameraYOffset = 0.6;
@@ -64,7 +62,7 @@ class Car : Drawable
 		// sometimes they have a size of 8, often model[1]section[0] does
 		ubyte[][] textures;
 		Colour[][] fixedPalettes;
-		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET][3] palettes;
+		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET][3] paletteSets;
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[10] models;
 	
@@ -403,12 +401,28 @@ class Car : Drawable
 			
 		}
 
+		generatePaletteBinaries();
+
 		std.file.write("mymodelsBinary", modelsBinary);
 		std.file.write("myTexturesBinary", texturesBinary);
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
 		std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
 		std.file.write("myTexturesBinaryZlibBlock", texturesZlib);
+	}
+
+	private void generatePaletteBinaries()
+	{
+		foreach (i, set; paletteSets)
+		{
+			foreach (palette; set)
+			{
+				foreach (colour; palette)
+				{
+					paletteBinaries[i] ~= nativeToBigEndian(colour.whole);
+				}
+			}
+		}
 	}
 
 	private ubyte[] binaryToZlibBlock(ref ubyte[] data)

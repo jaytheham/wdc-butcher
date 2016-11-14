@@ -32,8 +32,8 @@ class CarRenderer : Renderer
 		int modelBlockIndex = -1;
 		int numModelBlocks = 0;
 
-		int paletteIndex = 0;
-		int numPalettes = 0;
+		int paletteIndex = -1;
+		int numPalettes = 8;
 		int palettesOffset;
 		immutable int paletteSize = 0x20;
 
@@ -69,7 +69,7 @@ class CarRenderer : Renderer
 
 		data = source.modelsBinary;
 
-		insertPalettes(source.palettes1Binary);
+		insertPalettes(source.paletteBinaries[0]);
 		insertTextures(source.texturesBinary);
 
 		while (data.readInt(modelBlockPointerOffset + (numModelBlocks * 0x10)) > 0)
@@ -158,10 +158,11 @@ class CarRenderer : Renderer
 		}
 
 		palettesOffset = peek!int(data[0..4]) + 4; // Correct ??
-		while (data.readInt(palettesOffset + (paletteSize * numPalettes)) != 0)
-		{
-			numPalettes++;
-		}
+		//numPalettes = 8;
+		//while (data.readInt(palettesOffset + (paletteSize * numPalettes)) != 0)
+		//{
+		//	numPalettes++;
+		//}
 	}
 
 	private void insertTextures(ubyte[] textures)
@@ -237,14 +238,14 @@ class CarRenderer : Renderer
 			if (key == '3')
 			{
 				paletteIndex--;
-				paletteIndex = paletteIndex < 0 ? numPalettes - 1 : paletteIndex;
+				paletteIndex = paletteIndex < -1 ? numPalettes - 1 : paletteIndex;
 				loadModelData();
 				updateBuffers();
 			}
 			else if (key == '4')
 			{
 				paletteIndex++;
-				paletteIndex = paletteIndex >= numPalettes ? 0 : paletteIndex;
+				paletteIndex = paletteIndex >= numPalettes ? -1 : paletteIndex;
 				loadModelData();
 				updateBuffers();
 				writefln("Model:%.2X palette:%.2X", modelBlockIndex, paletteIndex);
@@ -401,7 +402,9 @@ class CarRenderer : Renderer
 
 		int w = 0, h = 0;
 		ubyte index;
-		auto palette = src.palettes1Binary[(modelToPalMap[modelIndex] * 0x20)..(modelToPalMap[modelIndex] * 0x20) + 0x20];
+		uint paletteNum = paletteIndex == -1 ? modelToPalMap[modelIndex] : paletteIndex;
+		writeln(paletteIndex, " ", paletteNum, " ", src.paletteBinaries.length);
+		auto palette = src.paletteBinaries[0][(paletteNum * 0x20)..(paletteNum * 0x20) + 0x20];
 		while (h < maxHeight)
 		{
 			w = 0;

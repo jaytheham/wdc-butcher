@@ -175,9 +175,13 @@ public:
 			carAssets[carIndex].textureZlib += carAssets[carIndex].textureZlib % 4 != 0 ? 4 - (carAssets[carIndex].textureZlib % 4) : 0;
 			carAssets[carIndex].textureZlibEnd = carAssets[carIndex].textureZlib + car.texturesZlib.length;
 			updateBinaryCarAssets();
-			// TODO, it seems my textures bork it
+			
 			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
 			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
+
+			binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
+			binary[carAssets[carIndex].palette2..carAssets[carIndex].palette2End] = car.paletteBinaries[1];
+			binary[carAssets[carIndex].palette3..carAssets[carIndex].palette3End] = car.paletteBinaries[2];
 		}
 		updateChecksum();
 		std.file.write("injectedRome", binary);

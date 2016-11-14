@@ -11,9 +11,9 @@ static class CarFromBinaries
 		Car car = new Car();
 		car.modelsBinary = binary;
 		car.texturesBinary = binaryTextures;
-		car.palettes1Binary = inPalettesA;
-		car.palettes2Binary = inPalettesB;
-		car.palettes3Binary = inPalettesC;
+		car.paletteBinaries[0] = inPalettesA;
+		car.paletteBinaries[1] = inPalettesB;
+		car.paletteBinaries[2] = inPalettesC;
 
 		car.unknown1 = binary.readFloat(0x8);
 		car.carCameraYOffset = binary.readFloat(0xC);
@@ -28,9 +28,9 @@ static class CarFromBinaries
 
 		parseBinaryTextures(binary, binaryTextures, car);
 
-		parseBinaryPalettes(inPalettesA, car.palettes[0]);
-		parseBinaryPalettes(inPalettesB, car.palettes[1]);
-		parseBinaryPalettes(inPalettesC, car.palettes[2]);
+		parseBinaryPalettes(inPalettesA, car.paletteSets[0]);
+		parseBinaryPalettes(inPalettesB, car.paletteSets[1]);
+		parseBinaryPalettes(inPalettesC, car.paletteSets[2]);
 
 		parseBinaryFixedPalettes(binary, car);
 

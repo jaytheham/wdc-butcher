@@ -28,7 +28,8 @@ static class Png
 			outputPalette ~= cast(ubyte)(colour.r * 8);
 			outputPalette ~= cast(ubyte)(colour.g * 8);
 			outputPalette ~= cast(ubyte)(colour.b * 8);
-			outputAlphas ~= index == 0 ? 0 : 0xFF;
+			outputAlphas ~= 0xFF;
+			// TODO: Add the option to export textures with true alpha
 		}
 		
 		outputPalette ~= getCrc(outputPalette[4..$]);
@@ -197,7 +198,7 @@ static class Png
 					alphas = input.rawRead(new ubyte[chunkSize]);
 					while (alphas.length < 16)
 					{
-						alphas ~= 0;
+						alphas ~= 0xff;
 					}
 				}
 				else if (chunkName == ['I','E','N','D'])
