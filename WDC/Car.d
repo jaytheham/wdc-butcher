@@ -241,7 +241,12 @@ class Car : Drawable
 			}
 			modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
 			texelsPointer += texture.length;
-			texturesBinary ~= texture;
+			ubyte[] rowSwappedTexture = texture.dup;
+			if (rowSwappedTexture.length == (40 * 38))
+			{
+				wordSwapOddRows(rowSwappedTexture, 40, 38);
+			}
+			texturesBinary ~= rowSwappedTexture;
 		}
 		
 		foreach (modelNum, textureNum; modelToTextureMap)

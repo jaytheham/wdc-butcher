@@ -6,14 +6,14 @@ import std.algorithm,
 
 static class CarFromBinaries
 {
-	public static Car convert(ubyte[] binary, ubyte[] binaryTextures, ubyte[] inPalettesA, ubyte[] inPalettesB, ubyte[] inPalettesC)
+	public static Car convert(ubyte[] binary, ubyte[] textures, ubyte[] palettesA, ubyte[] palettesB, ubyte[] palettesC)
 	{
 		Car car = new Car();
 		car.modelsBinary = binary;
-		car.texturesBinary = binaryTextures;
-		car.paletteBinaries[0] = inPalettesA;
-		car.paletteBinaries[1] = inPalettesB;
-		car.paletteBinaries[2] = inPalettesC;
+		car.texturesBinary = textures;
+		car.paletteBinaries[0] = palettesA;
+		car.paletteBinaries[1] = palettesB;
+		car.paletteBinaries[2] = palettesC;
 
 		car.unknown1 = binary.readFloat(0x8);
 		car.carCameraYOffset = binary.readFloat(0xC);
@@ -26,11 +26,11 @@ static class CarFromBinaries
 		                    vec3f(binary.readFloat(0x60), binary.readFloat(0x64), binary.readFloat(0x5C)),
 		                    vec3f(binary.readFloat(0x6C), binary.readFloat(0x70), binary.readFloat(0x68))];
 
-		parseBinaryTextures(binary, binaryTextures, car);
+		parseBinaryTextures(binary, textures, car);
 
-		parseBinaryPalettes(inPalettesA, car.paletteSets[0]);
-		parseBinaryPalettes(inPalettesB, car.paletteSets[1]);
-		parseBinaryPalettes(inPalettesC, car.paletteSets[2]);
+		parseBinaryPalettes(palettesA, car.paletteSets[0]);
+		parseBinaryPalettes(palettesB, car.paletteSets[1]);
+		parseBinaryPalettes(palettesC, car.paletteSets[2]);
 
 		parseBinaryFixedPalettes(binary, car);
 
@@ -38,13 +38,13 @@ static class CarFromBinaries
 		return car;
 	}
 
-	private static void parseBinaryTextures(ubyte[] binaryData, ubyte[] binaryTextures, Car car)
+	private static void parseBinaryTextures(ubyte[] binary, ubyte[] binaryTextures, Car car)
 	{
-		int modelToTexturePointers = binaryData.readInt(0xA0);
-		int modelToTextureCount = binaryData.readInt(0xA8);
+		int modelToTexturePointers = binary.readInt(0xA0);
+		int modelToTextureCount = binary.readInt(0xA8);
 
-		int textureDescriptorPointers = binaryData.readInt(0xB4);
-		int textureDescriptorCount = binaryData.readInt(0xB8);
+		int textureDescriptorPointers = binary.readInt(0xB4);
+		int textureDescriptorCount = binary.readInt(0xB8);
 
 		int descriptorLocation;
 		int textureDescriptorSize, actualTextureSize;
@@ -54,11 +54,11 @@ static class CarFromBinaries
 
 		foreach(index; 0..textureDescriptorCount)
 		{
-			descriptorLocation = binaryData.readInt(textureDescriptorPointers + (index * 4));
-			destination = binaryData.readInt(descriptorLocation + 4);
-			nextDestination = binaryData.readInt(descriptorLocation + 0x20 + 4);
+			descriptorLocation = binary.readInt(textureDescriptorPointers + (index * 4));
+			destination = binary.readInt(descriptorLocation + 4);
+			nextDestination = binary.readInt(descriptorLocation + 0x20 + 4);
 			actualTextureSize = nextDestination - destination;
-			textureDescriptorSize = (((binaryData.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
+			textureDescriptorSize = (((binary.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
 			if (index == textureDescriptorCount - 1)
 			{
 				actualTextureSize = textureDescriptorSize;
@@ -66,13 +66,12 @@ static class CarFromBinaries
 			car.textures[index] = binaryTextures[sourcePosition..sourcePosition + actualTextureSize];
 			if (actualTextureSize > 8)
 			{
-				// TODO remove this, so Car.textures are in the native format
 				wordSwapOddRows(car.textures[index], 40, 38);
 			}
-			sourcePosition += textureDescriptorSize;//actualTextureSize;
+			sourcePosition += textureDescriptorSize;
 			foreach(mIndex; 0..modelToTextureCount)
 			{
-				if (binaryData.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
+				if (binary.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
 				{
 					car.modelToTextureMap[mIndex] = index;
 				}
@@ -80,35 +79,35 @@ static class CarFromBinaries
 		}
 	}
 
-	private static void parseBinaryPalettes(ubyte[] binaryPaletteSource,
+	private static void parseBinaryPalettes(ubyte[] binaryPalette,
 		ref Car.Colour[Car.COLOURS_PER_PALETTE][Car.PALETTES_PER_SET] destination)
 	{
 		foreach(index; 0..(Car.COLOURS_PER_PALETTE * Car.PALETTES_PER_SET))
 		{
 			destination[index / Car.COLOURS_PER_PALETTE][index % Car.COLOURS_PER_PALETTE] =
-				Car.Colour(binaryPaletteSource.readUshort(index * 2));
+				Car.Colour(binaryPalette.readUshort(index * 2));
 		}
 	}
 
-	private static void parseBinaryFixedPalettes(ubyte[] binaryData, Car car)
+	private static void parseBinaryFixedPalettes(ubyte[] binary, Car car)
 	{
 		int insertedPalettePointer = 0x7C;
 
 		foreach(i; 0..Car.PALETTES_PER_SET)
 		{
-			car.insertedPaletteIndices[i] = binaryData.readInt(insertedPalettePointer);
+			car.insertedPaletteIndices[i] = binary.readInt(insertedPalettePointer);
 			insertedPalettePointer += 4;
 		}
 
 		for(int palettePointer = 0x398;; palettePointer += 0x20)
 		{
-			if (binaryData.readInt(palettePointer) != 0)
+			if (binary.readInt(palettePointer) != 0)
 			{
 				// fixed palette
 				car.fixedPalettes ~= new Car.Colour[Car.COLOURS_PER_PALETTE];
 				foreach(i; 0..Car.COLOURS_PER_PALETTE)
 				{
-					car.fixedPalettes[$ - 1][i] = Car.Colour(binaryData.readUshort(palettePointer + (i * 2)));
+					car.fixedPalettes[$ - 1][i] = Car.Colour(binary.readUshort(palettePointer + (i * 2)));
 				}
 			}
 			else if (canFind(car.insertedPaletteIndices[], palettePointer))
@@ -128,10 +127,10 @@ static class CarFromBinaries
 		}
 	}
 
-	private static void parseBinaryModels(ubyte[] binaryData, Car car)
+	private static void parseBinaryModels(ubyte[] binary, Car car)
 	{
 		int nextmodelSectionAddressSource = 0xF4;
-		int modelSectionAddress = binaryData.readInt(nextmodelSectionAddressSource);
+		int modelSectionAddress = binary.readInt(nextmodelSectionAddressSource);
 		int previousmodelSectionAddress = 0;
 		int verticesPointer = 0, normalsPointer, polygonsPointer, verticesCount, normalsCount, polygonsCount;
 		int currentModelNum = -1;
@@ -139,66 +138,66 @@ static class CarFromBinaries
 		Car.ModelSection currentModelSection;
 		while (modelSectionAddress != 0)
 		{
-			if (binaryData.readInt(modelSectionAddress) == modelSectionAddress
+			if (binary.readInt(modelSectionAddress) == modelSectionAddress
 				|| modelSectionAddress == previousmodelSectionAddress)
 			{
 				nextmodelSectionAddressSource += 0x10;
-				modelSectionAddress = binaryData.readInt(nextmodelSectionAddressSource);
+				modelSectionAddress = binary.readInt(nextmodelSectionAddressSource);
 				continue;
 			}
-			if (binaryData.readInt(modelSectionAddress) != verticesPointer)
+			if (binary.readInt(modelSectionAddress) != verticesPointer)
 			{
-				verticesPointer = binaryData.readInt(modelSectionAddress);
-				verticesCount   = binaryData.readInt(modelSectionAddress + 4);
-				normalsPointer  = binaryData.readInt(modelSectionAddress + 32);
-				normalsCount    = binaryData.readInt(modelSectionAddress + 36);
+				verticesPointer = binary.readInt(modelSectionAddress);
+				verticesCount   = binary.readInt(modelSectionAddress + 4);
+				normalsPointer  = binary.readInt(modelSectionAddress + 32);
+				normalsCount    = binary.readInt(modelSectionAddress + 36);
 
 				currentModel = Car.Model(new Car.Vertex[verticesCount], new Car.Normal[normalsCount]);
 
 				foreach(i; 0..verticesCount)
 				{
-					currentModel.vertices[i] = Car.Vertex(binaryData.readShort(verticesPointer + 0 + (i * 6)),
-					                                      binaryData.readShort(verticesPointer + 2 + (i * 6)),
-					                                      binaryData.readShort(verticesPointer + 4 + (i * 6)));
+					currentModel.vertices[i] = Car.Vertex(binary.readShort(verticesPointer + 0 + (i * 6)),
+					                                      binary.readShort(verticesPointer + 2 + (i * 6)),
+					                                      binary.readShort(verticesPointer + 4 + (i * 6)));
 				}
 				foreach(i; 0..normalsCount)
 				{
-					currentModel.normals[i] = Car.Normal(cast(byte)binaryData[normalsPointer + 0 + (i * 3)],
-					                                     cast(byte)binaryData[normalsPointer + 1 + (i * 3)],
-					                                     cast(byte)binaryData[normalsPointer + 2 + (i * 3)]);
+					currentModel.normals[i] = Car.Normal(cast(byte)binary[normalsPointer + 0 + (i * 3)],
+					                                     cast(byte)binary[normalsPointer + 1 + (i * 3)],
+					                                     cast(byte)binary[normalsPointer + 2 + (i * 3)]);
 				}
 				currentModelNum++;
 				car.models[currentModelNum] = currentModel;
 			}
-			polygonsPointer = binaryData.readInt(modelSectionAddress + 8);
-			polygonsCount   = binaryData.readInt(modelSectionAddress + 12);
+			polygonsPointer = binary.readInt(modelSectionAddress + 8);
+			polygonsCount   = binary.readInt(modelSectionAddress + 12);
 			currentModelSection = Car.ModelSection(new Car.Polygon[polygonsCount]);
 			foreach (i; 0..polygonsCount)
 			{
 				currentModelSection.polygons[i] =
-					Car.Polygon([binaryData.readUshort(polygonsPointer + 8  + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 10 + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 12 + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 14 + (i * 0x20))],
-					            [Car.TextureCoordinate(cast(byte)binaryData[polygonsPointer + 16 + (i * 0x20)],
-					                                   cast(byte)binaryData[polygonsPointer + 17 + (i * 0x20)]),
-					             Car.TextureCoordinate(cast(byte)binaryData[polygonsPointer + 18 + (i * 0x20)],
-					                                   cast(byte)binaryData[polygonsPointer + 19 + (i * 0x20)]),
-					             Car.TextureCoordinate(cast(byte)binaryData[polygonsPointer + 20 + (i * 0x20)],
-					                                   cast(byte)binaryData[polygonsPointer + 21 + (i * 0x20)]),
-					             Car.TextureCoordinate(cast(byte)binaryData[polygonsPointer + 22 + (i * 0x20)],
-					                                   cast(byte)binaryData[polygonsPointer + 23 + (i * 0x20)])],
-					            [binaryData.readUshort(polygonsPointer + 24 + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 26 + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 28 + (i * 0x20)),
-					             binaryData.readUshort(polygonsPointer + 30 + (i * 0x20))]
+					Car.Polygon([binary.readUshort(polygonsPointer + 8  + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 10 + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 12 + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 14 + (i * 0x20))],
+					            [Car.TextureCoordinate(cast(byte)binary[polygonsPointer + 16 + (i * 0x20)],
+					                                   cast(byte)binary[polygonsPointer + 17 + (i * 0x20)]),
+					             Car.TextureCoordinate(cast(byte)binary[polygonsPointer + 18 + (i * 0x20)],
+					                                   cast(byte)binary[polygonsPointer + 19 + (i * 0x20)]),
+					             Car.TextureCoordinate(cast(byte)binary[polygonsPointer + 20 + (i * 0x20)],
+					                                   cast(byte)binary[polygonsPointer + 21 + (i * 0x20)]),
+					             Car.TextureCoordinate(cast(byte)binary[polygonsPointer + 22 + (i * 0x20)],
+					                                   cast(byte)binary[polygonsPointer + 23 + (i * 0x20)])],
+					            [binary.readUshort(polygonsPointer + 24 + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 26 + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 28 + (i * 0x20)),
+					             binary.readUshort(polygonsPointer + 30 + (i * 0x20))]
 					           );
 			}
 			car.models[currentModelNum].modelSections ~= currentModelSection;
 
 			nextmodelSectionAddressSource += 0x10;
 			previousmodelSectionAddress = modelSectionAddress;
-			modelSectionAddress = binaryData.readInt(nextmodelSectionAddressSource);
+			modelSectionAddress = binary.readInt(nextmodelSectionAddressSource);
 		}
 	}
 }
