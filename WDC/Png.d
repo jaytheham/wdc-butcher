@@ -7,7 +7,7 @@ static class Png
 {
 	static uint[256] crcTable;
 
-	public static ubyte[] wdcTextureToPng(Colour[] palette, ubyte[] texture, uint width, uint height)
+	public static ubyte[] wdcTextureToPng(Car.Colour[] palette, ubyte[] texture, uint width, uint height)
 	{
 		assert(width <= 0xFF && height <= 0xFF, "Given texture size unhandled by wdc.Png");
 
@@ -156,10 +156,10 @@ static class Png
 		return texture;
 	}
 
-	public static Colour[] pngToWdcPalette(string filePath)
+	public static Car.Colour[] pngToWdcPalette(string filePath)
 	{
 		import std.string, std.bitmanip, std.file;
-		Colour[] palette;
+		Car.Colour[] palette;
 		if (exists(filePath))
 		{
 			File input = File(filePath, "rb");
@@ -211,7 +211,7 @@ static class Png
 			input.close();
 			for(int i = 0; i < colours.length; i += 3)
 			{
-				palette ~= Colour(
+				palette ~= Car.Colour(
 				                  ((colours[i]     / 8) << 11) |
 				                  ((colours[i + 1] / 8) << 6) |
 				                  ((colours[i + 2] / 8) << 1) |

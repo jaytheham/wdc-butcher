@@ -6,16 +6,6 @@ import std.file,		std.bitmanip,		std.algorithm,
 	   wdc.tools,		wdc.drawable,		wdc.renderer,
        wdc.carRenderer;
 // Hold all information about a Car asset (and the ability to convert it to N64 binaries)
-union Colour
-{
-	ushort whole;
-	mixin(bitfields!(
-		ubyte, "alpha",		1,
-		ubyte,	"b",		5,
-		ubyte,	"g",		5,
-		ubyte,	"r",		5));
-}
-
 class Car : Drawable
 {
 	private
@@ -66,7 +56,15 @@ class Car : Drawable
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[10] models;
 	
-		
+		union Colour
+		{
+			ushort whole;
+			mixin(bitfields!(
+				ubyte, "alpha",		1,
+				ubyte,	"b",		5,
+				ubyte,	"g",		5,
+				ubyte,	"r",		5));
+		}
 
 		struct Model
 		{
@@ -107,8 +105,6 @@ class Car : Drawable
 			byte v;
 		}
 	}
-
-	this(){}
 
 	private void removeRepeatedVertices()
 	{
@@ -182,10 +178,9 @@ class Car : Drawable
 		modelsBinary ~= [0,0,0,0,0,0,0,0];
 
 		// Until/if I handle the fixed palettes the inserted can just go in order
-		uint palettePointer = FIXED_DATA_END;
 		foreach(i; 0..8)
 		{
-			modelsBinary ~= nativeToBigEndian(palettePointer + (i * 0x20));
+			modelsBinary ~= nativeToBigEndian(FIXED_DATA_END + (i * 0x20));
 		}
 		modelsBinary ~= [0,0,0,0];
 
@@ -194,41 +189,33 @@ class Car : Drawable
 		uint textureDescriptorsSize = textures.length * 0x20;
 		
 		uint a0Start = FIXED_DATA_END + paletteSize + texturesSize + textureDescriptorsSize;
-		uint a0Count = modelToTextureMap.length;// + 4; // +4 moving wheel textures
-		// 0xA0
+		uint a0Count = modelToTextureMap.length;
 		modelsBinary ~= nativeToBigEndian(a0Start);
 		modelsBinary ~= [0,0,0,0];
 		modelsBinary ~= nativeToBigEndian(a0Count);
-		// After the 3rd LoD there is the weird small texture, then the four moving wheel textures
-		// for now lets leave out the small mutant and see what happens
 		modelsBinary ~= [0,0,0,0,0,0,0,0];
 
 		uint b4Start = a0Start + ((modelToTextureMap.length) * 4);
-		// 0xB4
 		modelsBinary ~= nativeToBigEndian(b4Start);
 		modelsBinary ~= [0,0,0,0xFF & textures.length];
 		modelsBinary ~= [0,0,0,0,0,0,0,0,0,0,0,0];
 
 		uint dcStart = padToXBytes(b4Start + (textures.length * 4) + (4 * 0x20), 8);
 		uint c8Start = dcStart + (4 * 4);
-		// 0xC8
 		modelsBinary ~= nativeToBigEndian(c8Start);
 		modelsBinary ~= [0,0,0,0];
-		modelsBinary ~= [0,0,0,4]; // moving wheel textures
+		modelsBinary ~= [0,0,0,4];
 		modelsBinary ~= [0,0,0,0,0,0,0,0];
 
-		
-		// 0xDC
 		modelsBinary ~= nativeToBigEndian(dcStart);
 		modelsBinary ~= [0,0,0,4];
-		modelsBinary ~= [0,0,0,0,	0,0,0,0];
+		modelsBinary ~= [0,0,0,0,0,0,0,0];
+
 		modelsBinary ~= nativeToBigEndian(a0Count);
 		modelsBinary ~= [0,0,0,4];
 
 		// 0xF4
-		modelsBinary ~= new ubyte[0x2A4];
-		modelsBinary ~= new ubyte[paletteSize];
-		modelsBinary ~= new ubyte[texturesSize];
+		modelsBinary ~= new ubyte[0x2A4 + paletteSize + texturesSize];
 
 		if (modelsBinary.length % 8 != 0) // pad to next doubleword
 		{
@@ -236,65 +223,51 @@ class Car : Drawable
 		}
 		
 		uint[] textureDescriptorPointers = new uint[textures.length];
-		uint insertedTexturePointer = FIXED_DATA_END + paletteSize;
-		// Body texture descriptors
+		uint texelsPointer = FIXED_DATA_END + paletteSize;
 		foreach (i, texture; textures)
 		{
 			textureDescriptorPointers[i] = modelsBinary.length;
 			modelsBinary ~= [0xFD, 0x10, 0, 0];
-			modelsBinary ~= nativeToBigEndian(insertedTexturePointer);
+			modelsBinary ~= nativeToBigEndian(texelsPointer);
 			modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
 			if (texture.length == (80 * 38) / 2)
 			{
 				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
-				insertedTexturePointer += texture.length;
 			}
 			else
 			{
-				//assert(texture.length == 8, "Texture is not 8");
+				assert(texture.length == 8, "Texture is not 4x4 or 80x38");
 				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
-				insertedTexturePointer += texture.length;
 			}
-			texturesBinary ~= texture;
-			
 			modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
+			texelsPointer += texture.length;
+			texturesBinary ~= texture;
 		}
 		
 		foreach (modelNum, textureNum; modelToTextureMap)
 		{
 			modelsBinary ~= nativeToBigEndian(textureDescriptorPointers[textureNum]);
 		}
-		//modelsBinary ~= nativeToBigEndian(textureDescriptorPointers[$ - 4]);
-		//modelsBinary ~= nativeToBigEndian(textureDescriptorPointers[$ - 3]);
-		//modelsBinary ~= nativeToBigEndian(textureDescriptorPointers[$ - 2]);
-		//modelsBinary ~= nativeToBigEndian(textureDescriptorPointers[$ - 1]);
 
-		foreach (texturePointer; textureDescriptorPointers)
+		foreach (pointer; textureDescriptorPointers)
 		{
-			modelsBinary ~= nativeToBigEndian(texturePointer);
+			modelsBinary ~= nativeToBigEndian(pointer);
 		}
 
 		if (modelsBinary.length % 8 != 0) // pad to next doubleword
 		{
 			modelsBinary ~= new ubyte[8 - modelsBinary.length % 8];
 		}
-		// Moving wheel textures:
 
-		uint temp;
+		// Moving wheel textures:
+		uint descriptorPointer;
 		foreach (i, texture; textures[$-4..$])
 		{
-			//textureDescriptorPointers[i] = modelsBinary.length;
-			//modelsBinary ~= [0xFD, 0x10, 0, 0];
-			//modelsBinary ~= nativeToBigEndian(insertedTexturePointer);
-			//modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
-			//assert(texture.length == (80 * 38) / 2, "Texture is not 80*38");
-			//modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
-			//modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
-
-			//insertedTexturePointer += texture.length;
-			temp = modelsBinary.length;
-			modelsBinary ~= modelsBinary[textureDescriptorPointers[(textures.length - 4) + i]..textureDescriptorPointers[(textures.length - 4) + i] + 0x20];
-			textureDescriptorPointers[(textures.length - 4) + i] = temp;
+			descriptorPointer = modelsBinary.length;
+			modelsBinary ~= modelsBinary[textureDescriptorPointers[(textures.length - 4) + i]
+			                             ..
+			                             textureDescriptorPointers[(textures.length - 4) + i] + 0x20];
+			textureDescriptorPointers[(textures.length - 4) + i] = descriptorPointer;
 		}
 		foreach (texturePointer; textureDescriptorPointers[$-4..$])
 		{
@@ -305,12 +278,12 @@ class Car : Drawable
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
 
-		uint verticesPointer, normalsPointer, polygonsPointer, unkPointer;
 		uint sectionIndex = 0;
+		uint verticesPointer, normalsPointer, polygonsPointer, unkPointer;
 
 		models[2].modelSections.length = 4;
-		models[3].modelSections.length = 4;
-		foreach (m, model; models)
+		models[3].modelSections.length = 4; // Even though they're almost certainly empty!
+		foreach (modelIndex, model; models)
 		{
 			verticesPointer = modelsBinary.length;
 			foreach (vertex; model.vertices)
@@ -319,16 +292,17 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(vertex.x);
 				modelsBinary ~= nativeToBigEndian(vertex.y);
 			}
-			normalsPointer = modelsBinary.length;
-			if (m == 0)
+
+			if (modelIndex == 0)
 			{
+				normalsPointer = modelsBinary.length;
 				foreach (normal; model.normals)
 				{
-					modelsBinary ~= [normal.z, normal.x, normal.y]; // OK not to cast?
+					modelsBinary ~= [normal.z, normal.x, normal.y];
 				}
 			}
 
-			if (m == 1)
+			if (modelIndex == 1)
 			{
 				unkPointer = modelsBinary.length;
 				modelsBinary ~= [0,0,0,0xFF];
@@ -336,7 +310,7 @@ class Car : Drawable
 
 			if (modelsBinary.length % 16 != 0) // pad to next doubleword
 			{
-				modelsBinary ~= new ubyte[16 - modelsBinary.length % 16];
+				modelsBinary ~= new ubyte[16 - (modelsBinary.length % 16)];
 			}
 
 			foreach (s, section; model.modelSections)
@@ -344,8 +318,8 @@ class Car : Drawable
 				polygonsPointer = modelsBinary.length;
 				foreach (polygon; section.polygons)
 				{
-					modelsBinary ~= [0,0,0,m == 0 ? 0x21 : 0];
-					modelsBinary ~= [m == 0 ? cast(ubyte)s : 0x12,0,0,0];
+					modelsBinary ~= [0,0,0,modelIndex == 0 ? 0x21 : 0];
+					modelsBinary ~= [modelIndex == 0 ? cast(ubyte)s : 0x12,0,0,0];
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[0]);
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[1]);
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[2]);
@@ -358,13 +332,13 @@ class Car : Drawable
 					modelsBinary ~= polygon.textureCoordinates[2].v;
 					modelsBinary ~= polygon.textureCoordinates[3].u;
 					modelsBinary ~= polygon.textureCoordinates[3].v;
-					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[0] : cast(ushort)0);
-					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[1] : cast(ushort)0);
-					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[2] : cast(ushort)0);
-					modelsBinary ~= nativeToBigEndian(m == 0 ? polygon.normalIndices[3] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[0] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[1] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[2] : cast(ushort)0);
+					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[3] : cast(ushort)0);
 				}
 				
-				foreach (nothing; 0..(m == 1 ? 4 : 1))
+				foreach (nothing; 0..(modelIndex == 1 ? 4 : 1))
 				{
 					modelsBinary[(0xF4 + (sectionIndex * 0x10))..(0xF8 + (sectionIndex * 0x10))] = nativeToBigEndian(modelsBinary.length);
 					sectionIndex++;
@@ -374,20 +348,20 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(model.vertices.length);
 				modelsBinary ~= nativeToBigEndian(polygonsPointer);
 				modelsBinary ~= nativeToBigEndian(section.polygons.length);
-				if (m == 1)
+				if (modelIndex == 1)
 				{
 					modelsBinary ~= nativeToBigEndian(unkPointer);
-					modelsBinary ~= [0,0,0,0]; // Not used right?
+					modelsBinary ~= [0,0,0,0];
 					modelsBinary ~= nativeToBigEndian(unkPointer);
-					modelsBinary ~= [0,0,0,1]; // Not used right?
+					modelsBinary ~= [0,0,0,1];
 				}
 				else
 				{
-					modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
-					modelsBinary ~= [0,0,0,0, 0,0,0,0]; // Not used right?
+					modelsBinary ~= [0,0,0,0, 0,0,0,0];
+					modelsBinary ~= [0,0,0,0, 0,0,0,0];
 				}
 				
-				if (m == 0)
+				if (modelIndex == 0)
 				{
 					modelsBinary ~= nativeToBigEndian(normalsPointer);
 					modelsBinary ~= nativeToBigEndian(model.normals.length);
@@ -396,9 +370,8 @@ class Car : Drawable
 				{
 					modelsBinary ~= [0,0,0,0, 0,0,0,0];
 				}
-				modelsBinary ~= [0,0,0,0, 0,0,0,0]; // padding
+				modelsBinary ~= [0,0,0,0, 0,0,0,0];
 			}
-			
 		}
 
 		generatePaletteBinaries();
@@ -427,30 +400,30 @@ class Car : Drawable
 
 	private ubyte[] binaryToZlibBlock(ref ubyte[] data)
 	{
-		import std.zlib:compress;
-		uint offset = 0;
+		import std.zlib : compress;
+		uint position = 0;
 		uint chunkSize = 0x3E80;
 		ubyte[] buffer;
-		ubyte[] outfile = [0,0,0,0];
+		ubyte[] zlibBlock = [0,0,0,0];
 
-		outfile ~= nativeToBigEndian(data.length);
-		while (offset < data.length)
+		zlibBlock ~= nativeToBigEndian(data.length);
+		while (position < data.length)
 		{
-			if (offset + chunkSize > data.length)
+			if (position + chunkSize > data.length)
 			{
-				chunkSize = data.length - offset;
+				chunkSize = data.length - position;
 			}
-			buffer = compress(data[offset..offset + chunkSize], 9);
-			outfile ~= nativeToBigEndian(buffer.length);
-			outfile ~= buffer;
-			if (outfile.length % 2 == 1)
+			buffer = compress(data[position..position + chunkSize], 9);
+			zlibBlock ~= nativeToBigEndian(buffer.length);
+			zlibBlock ~= buffer;
+			if (zlibBlock.length % 2 == 1)
 			{
-				outfile ~= [0];
+				zlibBlock ~= [0];
 			}
-			offset += chunkSize;
+			position += chunkSize;
 		}
-		outfile[0..4] = nativeToBigEndian(outfile.length);
-		return outfile;
+		zlibBlock[0..4] = nativeToBigEndian(zlibBlock.length);
+		return zlibBlock;
 	}
 
 	private uint padToXBytes(uint value, uint boundary)

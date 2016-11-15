@@ -105,7 +105,7 @@ static class CarToObj
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
 		
 		File materialLibrary = File("output/car.mtl", "w");
-		Colour[] palette;
+		Car.Colour[] palette;
 
 		void writeTexture(ubyte[] textureBytes, int alternate, int textureNum, int modelNum)
 		{

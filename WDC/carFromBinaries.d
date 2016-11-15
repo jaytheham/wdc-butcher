@@ -81,12 +81,12 @@ static class CarFromBinaries
 	}
 
 	private static void parseBinaryPalettes(ubyte[] binaryPaletteSource,
-		ref Colour[Car.COLOURS_PER_PALETTE][Car.PALETTES_PER_SET] destination)
+		ref Car.Colour[Car.COLOURS_PER_PALETTE][Car.PALETTES_PER_SET] destination)
 	{
 		foreach(index; 0..(Car.COLOURS_PER_PALETTE * Car.PALETTES_PER_SET))
 		{
 			destination[index / Car.COLOURS_PER_PALETTE][index % Car.COLOURS_PER_PALETTE] =
-				Colour(binaryPaletteSource.readUshort(index * 2));
+				Car.Colour(binaryPaletteSource.readUshort(index * 2));
 		}
 	}
 
@@ -105,10 +105,10 @@ static class CarFromBinaries
 			if (binaryData.readInt(palettePointer) != 0)
 			{
 				// fixed palette
-				car.fixedPalettes ~= new Colour[Car.COLOURS_PER_PALETTE];
+				car.fixedPalettes ~= new Car.Colour[Car.COLOURS_PER_PALETTE];
 				foreach(i; 0..Car.COLOURS_PER_PALETTE)
 				{
-					car.fixedPalettes[$ - 1][i] = Colour(binaryData.readUshort(palettePointer + (i * 2)));
+					car.fixedPalettes[$ - 1][i] = Car.Colour(binaryData.readUshort(palettePointer + (i * 2)));
 				}
 			}
 			else if (canFind(car.insertedPaletteIndices[], palettePointer))
