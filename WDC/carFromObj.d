@@ -198,6 +198,9 @@ static class CarFromObj
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_0.png");
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "0_car22_0.png");
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "1_car22_0.png");
+		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "2_car22_0.png");
 		wordSwapOddRows(car.textures[$ - 1], 40, 38);
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_0.png");
 		wordSwapOddRows(car.textures[$ - 1], 40, 38);

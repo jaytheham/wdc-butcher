@@ -109,9 +109,12 @@ static class CarToObj
 
 		void writeTexture(ubyte[] textureBytes, int alternate, int textureNum, int modelNum)
 		{
-			materialLibrary.writeln("newmtl ", textureNum);
-			materialLibrary.writeln("illum 0");
-			materialLibrary.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.png", 0, textureNum, alternate));
+			if (alternate == 0)
+			{
+				materialLibrary.writeln("newmtl ", textureNum);
+				materialLibrary.writeln("illum 0");
+				materialLibrary.writeln(format("map_Kd -clamp on .\\%d_car%.2d_%d.png", 0, textureNum, alternate));
+			}
 			
 			File textureFile = File(format("output/%d_car%.2d_%d.png", paletteSet, textureNum, alternate), "wb");
 			palette = car.paletteSets[paletteSet][Car.MODEL_TO_PALETTE[modelNum + alternate]];
