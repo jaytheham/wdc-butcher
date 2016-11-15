@@ -133,16 +133,11 @@ public:
 			move = newSize - oldSize;
 		}
 
-		if (move == 0)
+		if (move < 0)
 		{
 			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
 			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
-		}
-		else if (move < 0)
-		{
-			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
-			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
-			foreach (index, asset; carAssets[carIndex + 1..$])
+			foreach (asset; carAssets[carIndex + 1..$])
 			{
 				if (asset.modelZlib >= MY_INSERT_ZONE)
 				{
@@ -152,7 +147,7 @@ public:
 		}
 		else if (move > 0)
 		{
-			foreach_reverse (index, asset; carAssets[carIndex + 1..$])
+			foreach_reverse (asset; carAssets[carIndex + 1..$])
 			{
 				if (asset.modelZlib >= MY_INSERT_ZONE)
 				{
@@ -160,7 +155,7 @@ public:
 				}
 			}
 			uint highestEnd = 0;
-			foreach (index, asset; carAssets[0..carIndex])
+			foreach (asset; carAssets[0..carIndex])
 			{
 				highestEnd = asset.textureZlibEnd > highestEnd ? asset.textureZlibEnd : 0;
 			}
@@ -174,15 +169,17 @@ public:
 			carAssets[carIndex].textureZlib = highestEnd + car.modelsZlib.length;
 			carAssets[carIndex].textureZlib += carAssets[carIndex].textureZlib % 4 != 0 ? 4 - (carAssets[carIndex].textureZlib % 4) : 0;
 			carAssets[carIndex].textureZlibEnd = carAssets[carIndex].textureZlib + car.texturesZlib.length;
-			updateBinaryCarAssets();
-			
-			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
-			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
-
-			binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
-			binary[carAssets[carIndex].palette2..carAssets[carIndex].palette2End] = car.paletteBinaries[1];
-			binary[carAssets[carIndex].palette3..carAssets[carIndex].palette3End] = car.paletteBinaries[2];
 		}
+		if (binary.length < carAssets[carIndex].textureZlibEnd)
+		{
+			binary ~= new ubyte[carAssets[carIndex].textureZlibEnd - binary.length];
+		}
+		binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
+		binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
+		binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
+		binary[carAssets[carIndex].palette2..carAssets[carIndex].palette2End] = car.paletteBinaries[1];
+		binary[carAssets[carIndex].palette3..carAssets[carIndex].palette3End] = car.paletteBinaries[2];
+		updateBinaryCarAssets();
 		updateChecksum();
 		std.file.write("injectedRome", binary);
 	}
