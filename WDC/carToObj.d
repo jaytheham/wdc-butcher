@@ -15,6 +15,7 @@ static class CarToObj
 		outputTextures(car, 0);
 		outputTextures(car, 1);
 		outputTextures(car, 2);
+
 		File output = File("output/car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
@@ -70,7 +71,7 @@ static class CarToObj
 				hasNormals = model.normals.length > 0;
 				foreach (polygon; section.polygons)
 				{
-					foreach (uvi, uv; polygon.textureCoordinates)
+					foreach (uv; polygon.textureCoordinates)
 					{
 						output.writeln("vt ", uv.u / 80.0, " ", uv.v / 38.0);
 					}
@@ -95,6 +96,7 @@ static class CarToObj
 			normalOffset += model.normals.length;
 			vertexOffest += model.vertices.length;
 		}
+		output.close();
 	}
 
 	private static void outputTextures(Car car, int paletteSet)
