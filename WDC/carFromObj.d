@@ -22,7 +22,7 @@ static class CarFromObj
 		Car car = new Car();
 		File input = File(objFilePath, "r");
 
-		void facesToPolygons()
+		void facesToPolygons(bool reusePrevious)
 		{
 			ushort convertVertexPointer(uint vertexIndex)
 			{
@@ -34,6 +34,28 @@ static class CarFromObj
 				return cast(ushort)((normalIndex - totalNormalCount - 1) +
 					(car.models[model].normals.length - sectionNormalCount));
 			}
+			float distanceBetween(Car.Vertex a, Car.Vertex b)
+			{
+				import std.math;
+				return sqrt(cast(float)(pow((b.x - a.x), 2) + pow((b.y - a.y), 2) + pow((b.z - a.z), 2)));
+			}
+			ushort findNearestPoint(ushort toIndex)
+			{
+				import std.math : abs;
+				uint closestIndex;
+				float distance = 100_000.0;
+				float temp;
+				foreach (fromIndex, vertex; car.models[model].vertices[0..$-sectionVertexCount])
+				{
+					temp = distanceBetween(car.models[model].vertices[fromIndex], car.models[model].vertices[toIndex]);
+					if (abs(temp) < distance)
+					{
+						distance = temp;
+						closestIndex = fromIndex;
+					}
+				}
+				return cast(ushort)closestIndex;
+			}
 			string[] point1, point2, point3, point4;
 			foreach (face; faces)
 			{
@@ -43,10 +65,10 @@ static class CarFromObj
 				point4 = face.length == 4 ? split(face[3], "/") : null;
 				car.models[model].modelSections[modelSection].polygons ~= Car.Polygon(
 					[
-					convertVertexPointer(parse!uint(point1[0])),
-					convertVertexPointer(parse!uint(point2[0])),
-					convertVertexPointer(parse!uint(point3[0])),
-					point4 != null ? convertVertexPointer(parse!uint(point4[0])) : cast(ushort)0xFFFF
+					reusePrevious ? findNearestPoint(convertVertexPointer(parse!uint(point1[0]))) : convertVertexPointer(parse!uint(point1[0])),
+					reusePrevious ? findNearestPoint(convertVertexPointer(parse!uint(point2[0]))) : convertVertexPointer(parse!uint(point2[0])),
+					reusePrevious ? findNearestPoint(convertVertexPointer(parse!uint(point3[0]))) : convertVertexPointer(parse!uint(point3[0])),
+					point4 != null ? (reusePrevious ? findNearestPoint(convertVertexPointer(parse!uint(point4[0]))) : convertVertexPointer(parse!uint(point4[0]))) : cast(ushort)0xFFFF
 					],
 					[
 					sectionUvs[parse!uint(point1[1]) - totalUvCount - 1],
@@ -72,7 +94,11 @@ static class CarFromObj
 			{
 				if (model != 0xFFFF)
 				{
-					facesToPolygons();
+					facesToPolygons(modelSection == 26 || modelSection == 27 || modelSection == 28);
+					if (modelSection == 26 || modelSection == 27 || modelSection == 28)
+					{
+						car.models[model].vertices.length -= sectionVertexCount;
+					}
 				}
 				lineParts = split(line[2..$], "-");
 				if (lineParts.length >= 2)
@@ -191,7 +217,11 @@ static class CarFromObj
 				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd);
 			}
 		}
-		facesToPolygons();
+		facesToPolygons(modelSection == 26 || modelSection == 27 || modelSection == 28);
+		if (modelSection == 26 || modelSection == 27 || modelSection == 28)
+		{
+			car.models[model].vertices.length -= sectionVertexCount;
+		}
 		
 		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
