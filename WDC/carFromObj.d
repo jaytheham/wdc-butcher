@@ -4,7 +4,7 @@ import wdc.car, wdc.png, wdc.tools,
 	
 	   gfm.math,
 
-	   std.algorithm, std.stdio, std.string, std.conv;
+	   std.algorithm, std.stdio, std.string, std.conv, std.math : round;
 
 static class CarFromObj
 {
@@ -150,24 +150,24 @@ static class CarFromObj
 			else if (line.startsWith("v "))
 			{
 				lineParts = split(line[2..$], " ");
-				car.models[model].vertices ~= Car.Vertex(cast(short)(parse!float(lineParts[2]) * 256),
-				                                         cast(short)(parse!float(lineParts[0]) * 256),
-				                                         cast(short)(parse!float(lineParts[1]) * 256));
+				car.models[model].vertices ~= Car.Vertex(cast(short)round(parse!float(lineParts[2]) * 256),
+				                                         cast(short)round(parse!float(lineParts[0]) * 256),
+				                                         cast(short)round(parse!float(lineParts[1]) * 256));
 				sectionVertexCount++;
 			}
 			else if (line.startsWith("vn "))
 			{
 				lineParts = split(line[3..$], " ");
-				car.models[model].normals ~= Car.Normal(cast(byte)(parse!float(lineParts[2]) * 127),
-				                                        cast(byte)(parse!float(lineParts[0]) * 127),
-				                                        cast(byte)(parse!float(lineParts[1]) * 127));
+				car.models[model].normals ~= Car.Normal(cast(byte)round(parse!float(lineParts[2]) * 127),
+				                                        cast(byte)round(parse!float(lineParts[0]) * 127),
+				                                        cast(byte)round(parse!float(lineParts[1]) * 127));
 				sectionNormalCount++;
 			}
 			else if (line.startsWith("vt "))
 			{
 				lineParts = split(line[3..$], " ");
-				sectionUvs ~= Car.TextureCoordinate(cast(byte)(parse!float(lineParts[0]) * 80),
-				                                    cast(byte)(parse!float(lineParts[1]) * 38));
+				sectionUvs ~= Car.TextureCoordinate(cast(byte)round(parse!float(lineParts[0]) * 80),
+				                                    cast(byte)round(parse!float(lineParts[1]) * 38));
 			}
 			else if (line.startsWith("f "))
 			{
