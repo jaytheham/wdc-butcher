@@ -298,6 +298,11 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(vertex.y);
 			}
 
+			if (modelsBinary.length % 8 != 0) // pad to next doubleword
+			{
+				modelsBinary ~= new ubyte[8 - (modelsBinary.length % 8)];
+			}
+
 			if (modelIndex == 0)
 			{
 				normalsPointer = modelsBinary.length;
@@ -306,10 +311,14 @@ class Car : Drawable
 					modelsBinary ~= [normal.z, normal.x, normal.y];
 				}
 			}
+			if (modelsBinary.length % 8 != 0) // pad
+			{
+				modelsBinary ~= new ubyte[8 - (modelsBinary.length % 8)];
+			}
 
+			unkPointer = modelsBinary.length;
 			if (modelIndex == 1)
 			{
-				unkPointer = modelsBinary.length;
 				modelsBinary ~= [0,0,0,0xFF];
 			}
 
@@ -362,7 +371,8 @@ class Car : Drawable
 				}
 				else
 				{
-					modelsBinary ~= [0,0,0,0, 0,0,0,0];
+					modelsBinary ~= nativeToBigEndian(unkPointer);
+					modelsBinary ~= [0,0,0,0];
 					modelsBinary ~= [0,0,0,0, 0,0,0,0];
 				}
 				
