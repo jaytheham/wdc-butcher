@@ -297,6 +297,7 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(vertex.x);
 				modelsBinary ~= nativeToBigEndian(vertex.y);
 			}
+			modelsBinary ~= [0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0];
 
 			if (modelsBinary.length % 8 != 0) // pad to next doubleword
 			{
@@ -359,7 +360,7 @@ class Car : Drawable
 				}
 
 				modelsBinary ~= nativeToBigEndian(verticesPointer);
-				modelsBinary ~= nativeToBigEndian(model.vertices.length);
+				modelsBinary ~= nativeToBigEndian(model.vertices.length + 5);
 				modelsBinary ~= nativeToBigEndian(polygonsPointer);
 				modelsBinary ~= nativeToBigEndian(section.polygons.length);
 				if (modelIndex == 1)
