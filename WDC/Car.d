@@ -93,22 +93,22 @@ class Car : Drawable
 			int[] newIndices = new int[model.vertices.length];
 			int[] removals;
 			bool found = false;
-			foreach (c, currentVertex; model.vertices)
+			foreach (current, currentVertex; model.vertices)
 			{
 				found = false;
-				foreach (p, previousVertex; model.vertices[0..c])
+				foreach (p, previousVertex; model.vertices[0..current])
 				{
 					if (currentVertex == previousVertex)
 					{
-						newIndices[c] = newIndices[p];
-						removals ~= c;
+						newIndices[current] = newIndices[p];
+						removals ~= current;
 						found = true;
 						break;
 					}
 				}
 				if (!found)
 				{
-					newIndices[c] = c - removals.length;
+					newIndices[current] = current - removals.length;
 				}
 			}
 
@@ -137,8 +137,10 @@ class Car : Drawable
 
 	public void generateBinaries()
 	{
+		removeRepeatedVertices();
+
 		enum FIXED_DATA_END = 0x398;
-		modelsBinary = [0,0,3,0x94,0,0,0,0];
+		modelsBinary = [0,0,3,0x94, 0,0,0,0];
 		modelsBinary ~= nativeToBigEndian(unknown1);
 		modelsBinary ~= nativeToBigEndian(carCameraYOffset);
 		modelsBinary ~= [0,0,0,0];
@@ -155,7 +157,7 @@ class Car : Drawable
 			modelsBinary ~= nativeToBigEndian(light.x);
 			modelsBinary ~= nativeToBigEndian(light.y);
 		}
-		modelsBinary ~= [0,0,0,0,0,0,0,0];
+		modelsBinary ~= [0,0,0,0, 0,0,0,0];
 
 		// Until/if I handle the fixed palettes the inserted can just go in order
 		foreach(i; 0..8)
@@ -173,23 +175,23 @@ class Car : Drawable
 		modelsBinary ~= nativeToBigEndian(a0Start);
 		modelsBinary ~= [0,0,0,0];
 		modelsBinary ~= nativeToBigEndian(a0Count);
-		modelsBinary ~= [0,0,0,0,0,0,0,0];
+		modelsBinary ~= [0,0,0,0, 0,0,0,0];
 
 		uint b4Start = a0Start + ((modelToTextureMap.length) * 4);
 		modelsBinary ~= nativeToBigEndian(b4Start);
 		modelsBinary ~= [0,0,0,0xFF & textures.length];
-		modelsBinary ~= [0,0,0,0,0,0,0,0,0,0,0,0];
+		modelsBinary ~= [0,0,0,0, 0,0,0,0, 0,0,0,0];
 
-		uint dcStart = padToXBytes(b4Start + (textures.length * 4) + (4 * 0x20), 8);
+		uint dcStart = pad(b4Start + (textures.length * 4) + (4 * 0x20), 8);
 		uint c8Start = dcStart + (4 * 4);
 		modelsBinary ~= nativeToBigEndian(c8Start);
 		modelsBinary ~= [0,0,0,0];
 		modelsBinary ~= [0,0,0,4];
-		modelsBinary ~= [0,0,0,0,0,0,0,0];
+		modelsBinary ~= [0,0,0,0, 0,0,0,0];
 
 		modelsBinary ~= nativeToBigEndian(dcStart);
 		modelsBinary ~= [0,0,0,4];
-		modelsBinary ~= [0,0,0,0,0,0,0,0];
+		modelsBinary ~= [0,0,0,0, 0,0,0,0];
 
 		modelsBinary ~= nativeToBigEndian(a0Count);
 		modelsBinary ~= [0,0,0,4];
@@ -197,10 +199,7 @@ class Car : Drawable
 		// 0xF4
 		modelsBinary ~= new ubyte[0x2A4 + paletteSize + texturesSize];
 
-		if (modelsBinary.length % 8 != 0) // pad to next doubleword
-		{
-			modelsBinary ~= new ubyte[8 - modelsBinary.length % 8];
-		}
+		pad(modelsBinary, 8);
 		
 		uint[] textureDescriptorPointers = new uint[textures.length];
 		uint texelsPointer = FIXED_DATA_END + paletteSize;
@@ -212,14 +211,14 @@ class Car : Drawable
 			modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
 			if (texture.length == (80 * 38) / 2)
 			{
-				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0x2F, 0x70, 0];
+				modelsBinary ~= [0xF3,0,0,0, 7, 0x2F, 0x70, 0];
 			}
 			else
 			{
-				assert(texture.length == 8, "Texture is not 4x4 or 80x38");
-				modelsBinary ~= [0xF3, 0, 0, 0, 7, 0, 0x30, 0];
+				assert(texture.length == 8, "Texture is neither 4x4 nor 80x38");
+				modelsBinary ~= [0xF3,0,0,0, 7, 0, 0x30, 0];
 			}
-			modelsBinary ~= [0xDF, 0, 0, 0, 0, 0, 0, 0];
+			modelsBinary ~= [0xDF,0,0,0, 0,0,0,0];
 			texelsPointer += texture.length;
 			ubyte[] rowSwappedTexture = texture.dup;
 			if (rowSwappedTexture.length == (40 * 38))
@@ -239,10 +238,7 @@ class Car : Drawable
 			modelsBinary ~= nativeToBigEndian(pointer);
 		}
 
-		if (modelsBinary.length % 8 != 0) // pad to next doubleword
-		{
-			modelsBinary ~= new ubyte[8 - modelsBinary.length % 8];
-		}
+		pad(modelsBinary, 8);
 
 		// Moving wheel textures:
 		uint descriptorPointer;
@@ -277,12 +273,12 @@ class Car : Drawable
 				modelsBinary ~= nativeToBigEndian(vertex.x);
 				modelsBinary ~= nativeToBigEndian(vertex.y);
 			}
-			modelsBinary ~= [0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0];
-
-			if (modelsBinary.length % 8 != 0) // pad to next doubleword
+			if (modelIndex == 0)
 			{
-				modelsBinary ~= new ubyte[8 - (modelsBinary.length % 8)];
+				modelsBinary ~= [0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0];
 			}
+
+			pad(modelsBinary, 8);
 
 			if (modelIndex == 0)
 			{
@@ -292,10 +288,8 @@ class Car : Drawable
 					modelsBinary ~= [normal.z, normal.x, normal.y];
 				}
 			}
-			if (modelsBinary.length % 8 != 0) // pad
-			{
-				modelsBinary ~= new ubyte[8 - (modelsBinary.length % 8)];
-			}
+
+			pad(modelsBinary, 8);
 
 			unkPointer = modelsBinary.length;
 			if (modelIndex == 1)
@@ -303,10 +297,7 @@ class Car : Drawable
 				modelsBinary ~= [0,0,0,0xFF];
 			}
 
-			if (modelsBinary.length % 16 != 0) // pad to next doubleword
-			{
-				modelsBinary ~= new ubyte[16 - (modelsBinary.length % 16)];
-			}
+			pad(modelsBinary, 16);
 
 			foreach (s, section; model.modelSections)
 			{
@@ -372,12 +363,12 @@ class Car : Drawable
 
 		generatePaletteBinaries();
 
-		std.file.write("mymodelsBinary", modelsBinary);
-		std.file.write("myTexturesBinary", texturesBinary);
+		//std.file.write("mymodelsBinary", modelsBinary);
+		//std.file.write("myTexturesBinary", texturesBinary);
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
-		std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
-		std.file.write("myTexturesBinaryZlibBlock", texturesZlib);
+		//std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
+		//std.file.write("myTexturesBinaryZlibBlock", texturesZlib);
 	}
 
 	private void generatePaletteBinaries()
@@ -422,7 +413,15 @@ class Car : Drawable
 		return zlibBlock;
 	}
 
-	private uint padToXBytes(uint value, uint boundary)
+	private void pad(ref ubyte[] target, uint size)
+	{
+		if (target.length % size != 0)
+		{
+			target ~= new ubyte[size - (target.length % size)];
+		}
+	}
+
+	private uint pad(uint value, uint boundary)
 	{
 		if (value % boundary != 0)
 		{

@@ -242,7 +242,6 @@ static class CarFromObj
 
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
-		//removeRepeatedVertices();
 		car.generateBinaries();
 		return car;
 	}
