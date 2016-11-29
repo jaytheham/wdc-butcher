@@ -152,19 +152,19 @@ static class CarFromBinaries
 				normalsPointer  = binary.readInt(modelSectionAddress + 32);
 				normalsCount    = binary.readInt(modelSectionAddress + 36);
 
-				currentModel = Car.Model(new Car.Vertex[verticesCount], new Car.Normal[normalsCount]);
+				currentModel = Car.Model(new vec3s[verticesCount], new vec3b[normalsCount]);
 
 				foreach(i; 0..verticesCount)
 				{
-					currentModel.vertices[i] = Car.Vertex(binary.readShort(verticesPointer + 0 + (i * 6)),
-					                                      binary.readShort(verticesPointer + 2 + (i * 6)),
-					                                      binary.readShort(verticesPointer + 4 + (i * 6)));
+					currentModel.vertices[i] = vec3s(binary.readShort(verticesPointer + 2 + (i * 6)),
+					                                 binary.readShort(verticesPointer + 4 + (i * 6)),
+					                                 binary.readShort(verticesPointer + 0 + (i * 6)));
 				}
 				foreach(i; 0..normalsCount)
 				{
-					currentModel.normals[i] = Car.Normal(cast(byte)binary[normalsPointer + 0 + (i * 3)],
-					                                     cast(byte)binary[normalsPointer + 1 + (i * 3)],
-					                                     cast(byte)binary[normalsPointer + 2 + (i * 3)]);
+					currentModel.normals[i] = vec3b(cast(byte)binary[normalsPointer + 1 + (i * 3)],
+					                                cast(byte)binary[normalsPointer + 2 + (i * 3)],
+					                                cast(byte)binary[normalsPointer + 0 + (i * 3)]);
 				}
 				currentModelNum++;
 				car.models[currentModelNum] = currentModel;

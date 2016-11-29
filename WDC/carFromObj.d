@@ -20,23 +20,23 @@ static class CarFromObj
 		Car.TextureCoordinate[] sectionUvs;
 
 		enum FIRST_LOD_INDEX = 26;
-		Car.Vertex[][3] lodVertices;
-		//Car.TextureCoordinate[][3] lodUvs;
-		Car.Normal[][3] lodNormals;
-		//string[][][3] lodFaces
+		vec3s[][3] lodVertices;
+		vec3b[][3] lodNormals;
 		
 		Car car = new Car();
 		File input = File(objFilePath, "r");
 
 		void facesToPolygons(bool isLoD)
 		{
-			ushort convertVertexPointer(uint vertexIndex)
+			ushort convertVertexPointer(string indexString)
 			{
+				uint vertexIndex = parse!uint(indexString);
 				return cast(ushort)((vertexIndex - totalVertexCount - 1) +
 					(car.models[model].vertices.length - sectionVertexCount));
 			}
-			ushort convertNormalPointer(uint normalIndex)
+			ushort convertNormalPointer(string indexString)
 			{
+				uint normalIndex = parse!uint(indexString);
 				return cast(ushort)((normalIndex - totalNormalCount - 1) +
 					(car.models[model].normals.length - sectionNormalCount));
 			}
@@ -49,22 +49,33 @@ static class CarFromObj
 				point4 = face.length == 4 ? split(face[3], "/") : null;
 				car.models[model].modelSections[modelSection].polygons ~= Car.Polygon(
 					[
-					isLoD ? cast(ushort)(parse!uint(point1[0]) - (totalVertexCount + 1)) : convertVertexPointer(parse!uint(point1[0])),
-					isLoD ? cast(ushort)(parse!uint(point2[0]) - (totalVertexCount + 1)) : convertVertexPointer(parse!uint(point2[0])),
-					isLoD ? cast(ushort)(parse!uint(point3[0]) - (totalVertexCount + 1)) : convertVertexPointer(parse!uint(point3[0])),
-					point4 != null ? (isLoD ? cast(ushort)(parse!uint(point4[0]) - (totalVertexCount + 1)) : convertVertexPointer(parse!uint(point4[0]))) : cast(ushort)0xFFFF
+					isLoD ? cast(ushort)(parse!uint(point1[0]) - (totalVertexCount + 1))
+					      : convertVertexPointer(point1[0]),
+					isLoD ? cast(ushort)(parse!uint(point2[0]) - (totalVertexCount + 1))
+					      : convertVertexPointer(point2[0]),
+					isLoD ? cast(ushort)(parse!uint(point3[0]) - (totalVertexCount + 1))
+					      : convertVertexPointer(point3[0]),
+					point4 == null ? cast(ushort)0xFFFF
+					               : (isLoD ? cast(ushort)(parse!uint(point4[0]) - (totalVertexCount + 1))
+						                    : convertVertexPointer(point4[0]))
 					],
 					[
 					sectionUvs[parse!uint(point1[1]) - totalUvCount - 1],
 					sectionUvs[parse!uint(point2[1]) - totalUvCount - 1],
 					sectionUvs[parse!uint(point3[1]) - totalUvCount - 1],
-					point4 != null ? sectionUvs[parse!uint(point4[1]) - totalUvCount - 1] : Car.TextureCoordinate(0,0)
+					point4 == null ? Car.TextureCoordinate(0,0)
+					               : sectionUvs[parse!uint(point4[1]) - totalUvCount - 1]
 					],
 					[
-					isLoD ? cast(ushort)(parse!uint(point1[2]) - (totalNormalCount + 1)) : convertNormalPointer(parse!uint(point1[2])),
-					isLoD ? cast(ushort)(parse!uint(point2[2]) - (totalNormalCount + 1)) : convertNormalPointer(parse!uint(point2[2])),
-					isLoD ? cast(ushort)(parse!uint(point3[2]) - (totalNormalCount + 1)) : convertNormalPointer(parse!uint(point3[2])),
-					point4 != null ? (isLoD ? cast(ushort)(parse!uint(point4[2]) - (totalNormalCount + 1)) : convertNormalPointer(parse!uint(point4[2]))) : 0
+					isLoD ? cast(ushort)(parse!uint(point1[2]) - (totalNormalCount + 1))
+					      : convertNormalPointer(point1[2]),
+					isLoD ? cast(ushort)(parse!uint(point2[2]) - (totalNormalCount + 1))
+					      : convertNormalPointer(point2[2]),
+					isLoD ? cast(ushort)(parse!uint(point3[2]) - (totalNormalCount + 1))
+					      : convertNormalPointer(point3[2]),
+					point4 == null ? 0
+					               : (isLoD ? cast(ushort)(parse!uint(point4[2]) - (totalNormalCount + 1))
+						                    : convertNormalPointer(point4[2]))
 					]
 					);
 			}
@@ -78,7 +89,7 @@ static class CarFromObj
 			{
 				if (model != 0xFFFF)
 				{
-					facesToPolygons(modelSection == 26 || modelSection == 27 || modelSection == 28);
+					facesToPolygons(isLoD(modelSection));
 				}
 				lineParts = split(line[2..$], "-");
 				if (lineParts.length >= 2)
@@ -130,35 +141,27 @@ static class CarFromObj
 			else if (line.startsWith("v "))
 			{
 				lineParts = split(line[2..$], " ");
-				if (modelSection == 26 || modelSection == 27 || modelSection == 28)
+				void addVertex(ref vec3s[] verts)
 				{
-					lodVertices[modelSection - FIRST_LOD_INDEX] ~= Car.Vertex(cast(short)round(parse!float(lineParts[2]) * 256),
-				                                         cast(short)round(parse!float(lineParts[0]) * 256),
-				                                         cast(short)round(parse!float(lineParts[1]) * 256));
+					verts ~= vec3s(cast(short)round(parse!float(lineParts[0]) * 256),
+					               cast(short)round(parse!float(lineParts[1]) * 256),
+					               cast(short)round(parse!float(lineParts[2]) * 256));
 				}
-				else
-				{
-					car.models[model].vertices ~= Car.Vertex(cast(short)round(parse!float(lineParts[2]) * 256),
-				                                         cast(short)round(parse!float(lineParts[0]) * 256),
-				                                         cast(short)round(parse!float(lineParts[1]) * 256));
-				}
+				isLoD(modelSection) ? addVertex(lodVertices[modelSection - FIRST_LOD_INDEX])
+				                    : addVertex(car.models[model].vertices);
 				sectionVertexCount++;
 			}
 			else if (line.startsWith("vn "))
 			{
 				lineParts = split(line[3..$], " ");
-				if (modelSection == 26 || modelSection == 27 || modelSection == 28)
+				void addNormal(ref vec3b[] norms)
 				{
-					lodNormals[modelSection - FIRST_LOD_INDEX] ~= Car.Normal(cast(byte)round(parse!float(lineParts[2]) * 127),
-					                                        cast(byte)round(parse!float(lineParts[0]) * 127),
-					                                        cast(byte)round(parse!float(lineParts[1]) * 127));
+					norms ~= vec3b(cast(byte)round(parse!float(lineParts[0]) * 127),
+					               cast(byte)round(parse!float(lineParts[1]) * 127),
+					               cast(byte)round(parse!float(lineParts[2]) * 127));
 				}
-				else
-				{
-					car.models[model].normals ~= Car.Normal(cast(byte)round(parse!float(lineParts[2]) * 127),
-					                                        cast(byte)round(parse!float(lineParts[0]) * 127),
-					                                        cast(byte)round(parse!float(lineParts[1]) * 127));
-				}
+				isLoD(modelSection) ? addNormal(lodNormals[modelSection - FIRST_LOD_INDEX])
+				                    : addNormal(car.models[model].normals);
 				sectionNormalCount++;
 			}
 			else if (line.startsWith("vt "))
@@ -215,11 +218,12 @@ static class CarFromObj
 				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd);
 			}
 		}
-		facesToPolygons(modelSection == 26 || modelSection == 27 || modelSection == 28);
+		facesToPolygons(isLoD(modelSection));
 		totalVertexCount += sectionVertexCount;
 		totalNormalCount += sectionNormalCount;
 		totalUvCount += sectionUvs.length;
-		updateLoDs(car, lodVertices);
+
+		updateLoDs(car, lodVertices, lodNormals);
 		
 		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
@@ -243,15 +247,20 @@ static class CarFromObj
 		return car;
 	}
 
-	private static void updateLoDs(ref Car car, ref Car.Vertex[][3] lodVertices)
+	private static bool isLoD(uint sectionNumber)
+	{
+		return sectionNumber == 26 || sectionNumber == 27 || sectionNumber == 28;
+	}
+
+	private static void updateLoDs(ref Car car, ref vec3s[][3] lodVertices, ref vec3b[][3] lodNormals)
 	{
 		enum FIRST_LOD_INDEX = 26;
-		float distanceBetween(Car.Vertex a, Car.Vertex b)
+		float distanceBetween(vec3s a, vec3s b)
 		{
 			import std.math;
 			return sqrt(cast(float)(pow((b.x - a.x), 2) + pow((b.y - a.y), 2) + pow((b.z - a.z), 2)));
 		}
-		ushort findNearestPoint(Car.Vertex toVertex)
+		ushort findNearestPoint(vec3s toVertex)
 		{
 			import std.math : abs;
 			uint closestIndex;
@@ -272,6 +281,28 @@ static class CarFromObj
 			}
 			return cast(ushort)closestIndex;
 		}
+		ushort findNearestNormal(vec3b source)
+		{
+			import std.math : PI;
+			vec3f lodNormal = vec3f(source.x, source.y, source.z);
+			uint closestIndex;
+			double distance = 100_000.0;
+			double temp;
+			foreach (carIndex, carNormal; car.models[0].normals)
+			{
+				temp = angleBetween(lodNormal, vec3f(carNormal.x, carNormal.y, carNormal.z)) * (180.0 / PI);
+				if (temp < distance)
+				{
+					distance = temp;
+					closestIndex = carIndex;
+					if (distance == 0.0)
+					{
+						break;
+					}
+				}
+			}
+			return cast(ushort)closestIndex;
+		}
 		foreach (lod; 0..3)
 		{
 			foreach (ref polygon; car.models[0].modelSections[lod + FIRST_LOD_INDEX].polygons)
@@ -283,7 +314,10 @@ static class CarFromObj
 						vertexIndex = findNearestPoint(lodVertices[lod][vertexIndex]);
 					}
 				}
-				// do same for normals
+				foreach (ref normalIndex; polygon.normalIndices)
+				{
+					normalIndex = findNearestNormal(lodNormals[lod][normalIndex]);
+				}
 			}
 		}
 	}

@@ -68,23 +68,9 @@ class Car : Drawable
 
 		struct Model
 		{
-			Vertex[] vertices;
-			Normal[] normals;
+			vec3s[] vertices;
+			vec3b[] normals;
 			ModelSection[] modelSections;
-		}
-
-		struct Vertex
-		{
-			short z;
-			short x;
-			short y;
-		}
-
-		struct Normal
-		{
-			byte z;
-			byte x;
-			byte y;
 		}
 
 		struct ModelSection
