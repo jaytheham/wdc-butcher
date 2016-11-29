@@ -81,14 +81,8 @@ class Car : Drawable
 		struct Polygon
 		{
 			ushort[4] vertexIndices;
-			TextureCoordinate[4] textureCoordinates;
+			vec2b[4] textureCoordinates;
 			ushort[4] normalIndices;
-		}
-
-		struct TextureCoordinate
-		{
-			byte u;
-			byte v;
 		}
 	}
 
@@ -325,14 +319,14 @@ class Car : Drawable
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[1]);
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[2]);
 					modelsBinary ~= nativeToBigEndian(polygon.vertexIndices[3]);
-					modelsBinary ~= polygon.textureCoordinates[0].u;
-					modelsBinary ~= polygon.textureCoordinates[0].v;
-					modelsBinary ~= polygon.textureCoordinates[1].u;
-					modelsBinary ~= polygon.textureCoordinates[1].v;
-					modelsBinary ~= polygon.textureCoordinates[2].u;
-					modelsBinary ~= polygon.textureCoordinates[2].v;
-					modelsBinary ~= polygon.textureCoordinates[3].u;
-					modelsBinary ~= polygon.textureCoordinates[3].v;
+					modelsBinary ~= polygon.textureCoordinates[0].x;
+					modelsBinary ~= polygon.textureCoordinates[0].y;
+					modelsBinary ~= polygon.textureCoordinates[1].x;
+					modelsBinary ~= polygon.textureCoordinates[1].y;
+					modelsBinary ~= polygon.textureCoordinates[2].x;
+					modelsBinary ~= polygon.textureCoordinates[2].y;
+					modelsBinary ~= polygon.textureCoordinates[3].x;
+					modelsBinary ~= polygon.textureCoordinates[3].y;
 					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[0] : cast(ushort)0);
 					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[1] : cast(ushort)0);
 					modelsBinary ~= nativeToBigEndian(modelIndex == 0 ? polygon.normalIndices[2] : cast(ushort)0);

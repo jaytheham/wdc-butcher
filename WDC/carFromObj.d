@@ -17,7 +17,7 @@ static class CarFromObj
 		string line;
 		string[][] faces;
 		string[] lineParts, materialPaths;
-		Car.TextureCoordinate[] sectionUvs;
+		vec2b[] sectionUvs;
 
 		enum FIRST_LOD_INDEX = 26;
 		vec3s[][3] lodVertices;
@@ -63,7 +63,7 @@ static class CarFromObj
 					sectionUvs[parse!uint(point1[1]) - totalUvCount - 1],
 					sectionUvs[parse!uint(point2[1]) - totalUvCount - 1],
 					sectionUvs[parse!uint(point3[1]) - totalUvCount - 1],
-					point4 == null ? Car.TextureCoordinate(0,0)
+					point4 == null ? vec2b(cast(byte)0, cast(byte)0)
 					               : sectionUvs[parse!uint(point4[1]) - totalUvCount - 1]
 					],
 					[
@@ -167,8 +167,8 @@ static class CarFromObj
 			else if (line.startsWith("vt "))
 			{
 				lineParts = split(line[3..$], " ");
-				sectionUvs ~= Car.TextureCoordinate(cast(byte)round(parse!float(lineParts[0]) * 80),
-				                                    cast(byte)round(parse!float(lineParts[1]) * 38));
+				sectionUvs ~= vec2b(cast(byte)round(parse!float(lineParts[0]) * 80),
+				                    cast(byte)round(parse!float(lineParts[1]) * 38));
 			}
 			else if (line.startsWith("f "))
 			{

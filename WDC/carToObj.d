@@ -73,7 +73,7 @@ static class CarToObj
 				{
 					foreach (uv; polygon.textureCoordinates)
 					{
-						output.writeln("vt ", uv.u / 80.0, " ", uv.v / 38.0);
+						output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
 					}
 					output.write("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
 					                   hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
