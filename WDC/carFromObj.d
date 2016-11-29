@@ -228,13 +228,13 @@ static class CarFromObj
 		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_0.png");
-		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "0_car22_0.png");
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "1_car22_0.png");
-		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "2_car22_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_0.png");
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png");
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "0_car22_p2_0.png");
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "1_car22_p2_0.png");
+		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "2_car22_p2_0.png");
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_p2_0.png");
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_p2_0.png");
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_p2_0.png");
 		car.modelToTextureMap[0x1E] = 22;
 		car.modelToTextureMap[0x1F] = 23;
 		car.modelToTextureMap[0x20] = 24;
