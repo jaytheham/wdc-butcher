@@ -5,6 +5,7 @@ import wdc.car, wdc.png, wdc.tools,
 	   gfm.math,
 
 	   std.algorithm, std.stdio, std.string, std.conv, std.math : round;
+import std.file : exists;
 
 static class CarFromObj
 {
@@ -109,7 +110,7 @@ static class CarFromObj
 					sectionUvs.length = 0;
 					faces.length = 0;
 				}
-				else if (lineParts[0] == Car.OBJ_WHEEL_ID)
+				else if (indexOf(lineParts[0], Car.OBJ_WHEEL_ID) == 0)
 				{
 					foreach (i; 0..4)
 					{
@@ -123,7 +124,7 @@ static class CarFromObj
 					totalVertexCount += 4;
 					model = 0xFFFF;
 				}
-				else if (lineParts[0] == Car.OBJ_LIGHT_ID)
+				else if (indexOf(lineParts[0], Car.OBJ_LIGHT_ID) == 0)
 				{
 					foreach (i; 0..4)
 					{
@@ -180,13 +181,13 @@ static class CarFromObj
 				lineParts = split(line, " ");
 				if (canFind(lineParts[1], '\\') || canFind(lineParts[1], '/')) // Absolute path, hopefully
 				{
-					materialPaths = texturePathsFromMtl(lineParts[1]);
+					materialPaths = texturePathsFromMtl(lineParts[1], "");
 				}
 				else
 				{
 					int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 					string materialLibraryPath = objFilePath[0..folderEndIndex + 1] ~ lineParts[1];
-					materialPaths = texturePathsFromMtl(materialLibraryPath);
+					materialPaths = texturePathsFromMtl(materialLibraryPath, objFilePath[0..folderEndIndex + 1]);
 				}
 				foreach (path; materialPaths)
 				{
@@ -214,8 +215,13 @@ static class CarFromObj
 				fileNameStart = fileNameStart == -1 ? 1 : fileNameStart + 1;
 				string sourcePath = materialPaths[materialIndex][0..fileNameStart];
 				string fileEnd = materialPaths[materialIndex][fileNameStart + 1..$];
-				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "1" ~ fileEnd);
-				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd);
+				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "1" ~ fileEnd)
+				                                                       ? Png.pngToWdcPalette(sourcePath ~ "1" ~ fileEnd)
+				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+
+				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "2" ~ fileEnd)
+				                                                       ? Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd)
+				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 			}
 		}
 		facesToPolygons(isLoD(modelSection));
@@ -321,7 +327,7 @@ static class CarFromObj
 		}
 	}
 
-	private static string[] texturePathsFromMtl(string mtlLibraryPath)
+	private static string[] texturePathsFromMtl(string mtlLibraryPath, string path)
 	{
 		import std.conv, std.string;
 
@@ -339,7 +345,7 @@ static class CarFromObj
 			if (line.startsWith("map_Kd "))
 			{
 				lineParts = split(line, "map_Kd ");
-				texturePaths[textureNum] = chomp(lineParts[1]);
+				texturePaths[textureNum] = path ~ chomp(lineParts[1]);
 			}
 		}
 		input.close();
