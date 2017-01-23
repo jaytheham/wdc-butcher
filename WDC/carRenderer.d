@@ -403,7 +403,6 @@ class CarRenderer : Renderer
 		int w = 0, h = 0;
 		ubyte index;
 		uint paletteNum = paletteIndex == -1 ? modelToPalMap[modelIndex] : paletteIndex;
-		writeln(paletteIndex, " ", paletteNum, " ", src.paletteBinaries.length);
 		auto palette = src.paletteBinaries[0][(paletteNum * 0x20)..(paletteNum * 0x20) + 0x20];
 		while (h < maxHeight)
 		{

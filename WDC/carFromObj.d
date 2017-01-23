@@ -193,7 +193,7 @@ static class CarFromObj
 				{
 					if (path != "")
 					{
-						car.textures ~= Png.pngToWdcTexture(path);
+						car.textures ~= Png.pngToWdcTexture(path)[0];
 					}
 					else
 					{
@@ -208,7 +208,7 @@ static class CarFromObj
 				lineParts = split(line, " ");
 				int materialIndex = parse!int(lineParts[1]);
 				car.modelToTextureMap[modelSection] = materialIndex;
-				car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcPalette(materialPaths[materialIndex]);
+				car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
 
 				int fileNameStart = lastIndexOf(materialPaths[materialIndex], '/');
 				fileNameStart = fileNameStart == -1 ? lastIndexOf(materialPaths[materialIndex], '\\') : fileNameStart;
@@ -216,11 +216,11 @@ static class CarFromObj
 				string sourcePath = materialPaths[materialIndex][0..fileNameStart];
 				string fileEnd = materialPaths[materialIndex][fileNameStart + 1..$];
 				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "1" ~ fileEnd)
-				                                                       ? Png.pngToWdcPalette(sourcePath ~ "1" ~ fileEnd)
+				                                                       ? Png.pngToWdcTexture(sourcePath ~ "1" ~ fileEnd)[1]
 				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 
 				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "2" ~ fileEnd)
-				                                                       ? Png.pngToWdcPalette(sourcePath ~ "2" ~ fileEnd)
+				                                                       ? Png.pngToWdcTexture(sourcePath ~ "2" ~ fileEnd)[1]
 				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 			}
 		}
@@ -234,13 +234,13 @@ static class CarFromObj
 		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png");
-		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "0_car22_p2_0.png");
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "1_car22_p2_0.png");
-		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcPalette(sourcePath ~ "2_car22_p2_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_p2_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_p2_0.png");
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_p2_0.png");
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png")[0];
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png")[1];
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "1_car22_p2_0.png")[1];
+		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "2_car22_p2_0.png")[1];
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_p2_0.png")[0];
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_p2_0.png")[0];
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_p2_0.png")[0];
 		car.modelToTextureMap[0x1E] = 22;
 		car.modelToTextureMap[0x1F] = 23;
 		car.modelToTextureMap[0x20] = 24;
@@ -331,7 +331,7 @@ static class CarFromObj
 	{
 		import std.conv, std.string;
 
-		string[] texturePaths = new string[0x16], lineParts;
+		string[] texturePaths = new string[0x20], lineParts;
 		int textureNum;
 		string line;
 		File input = File(mtlLibraryPath, "r");
@@ -345,7 +345,7 @@ static class CarFromObj
 			if (line.startsWith("map_Kd "))
 			{
 				lineParts = split(line, "map_Kd ");
-				texturePaths[textureNum] = path ~ chomp(lineParts[1]);
+				texturePaths[textureNum] = chomp(lineParts[$ - 1]);
 			}
 		}
 		input.close();

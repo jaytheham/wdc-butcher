@@ -117,7 +117,7 @@ static class CarToObj
 			{
 				materialLibrary.writeln("newmtl ", textureNum);
 				materialLibrary.writeln("illum 0");
-				materialLibrary.writeln(format("map_Kd -clamp on .\\%d_car%.2d_p%d_%d.png", 0, textureNum, paletteIndex, alternate));
+				materialLibrary.writeln(format("map_Kd -clamp on %d_car%.2d_p%d_%d.png", 0, textureNum, paletteIndex, alternate));
 			}
 			
 			File textureFile = File(format("output/%d_car%.2d_p%d_%d.png", paletteSet, textureNum, paletteIndex, alternate), "wb");
