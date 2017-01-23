@@ -36,8 +36,8 @@ private
 
 void main(string[] args)
 {
-	writeln("World Driver Championship for N64 viewer");
-	writeln("Created by jaytheham @ gmail.com");
+	writeln("World Driver Championship for N64 Butcher");
+	writeln("Created by jaytheham@gmail.com");
 	writeln("--------------------------------\n");
 
 	binaryFile = getWDCBinary(args);
@@ -73,7 +73,6 @@ void main(string[] args)
 
 			handleInput(sdl2);
 
-			//test.drawTriangles(basicCamera);
 			selectedObject.draw(basicCamera, getKeys(sdl2));
 
 			window.swapBuffers();
@@ -230,6 +229,7 @@ private void displayCar(int index)
 	setWindowVisible(true);
 	writefln("\nDisplaying car #%d", index);
 	writeln("Press Escape to return to command window");
+	writeln("W A S D and mouse to move camera.\n1 & 2 to cycle through visible parts.\n3 & 4 to change current palette.\np to switch wireframe mode.");
 }
 
 private bool extractCarObj(string[] args)
@@ -303,9 +303,9 @@ private bool writeHelp(string[] args)
 
 private void setupCommands()
 {
-	commands ~= UserCommand("lc", "list-cars", "List car names and indices", "lc", &listCars);
-	commands ~= UserCommand("lt", "list-tracks", "List track names and indices", "lt", &listTracks);
-	commands ~= UserCommand("dc", "display-car", "Display car {index}", "dc {intCarIndex}",
+	commands ~= UserCommand("lc", "--list-cars", "List car names and indices", "lc", &listCars);
+	commands ~= UserCommand("lt", "--list-tracks", "List track names and indices", "lt", &listTracks);
+	commands ~= UserCommand("dc", "--display-car", "Display car {index}", "dc {index}",
 		(string[] args) {
 			if (args.length == 2)
 			{
@@ -322,7 +322,7 @@ private void setupCommands()
 			}
 			return false;
 		});
-	commands ~= UserCommand("dt", "--display-track", "Display track {index} {variation}", "dt {intTrackIndex} {intTrackVariation}",
+	commands ~= UserCommand("dt", "--display-track", "Display track {index} {variation}", "dt {index} {variation}",
 		(string[] args) {
 			if (args.length == 3)
 			{
@@ -339,11 +339,11 @@ private void setupCommands()
 			}
 			return false;
 		});
-	commands ~= UserCommand("e", "extract", "Extract and inflate zlib data {offset}");
-	commands ~= UserCommand("ecb", "extract-car-binary", "Extract car {index} binary data");
-	commands ~= UserCommand("eco", "extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
-	commands ~= UserCommand("ico", "import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/file.obj} {Car number to replace}", &importCarObj);
-	commands ~= UserCommand("etb", "extract-track", "Extract track {index} {variation} binary data");
-	commands ~= UserCommand("h", "help", "Display all available commands", "", &writeHelp);
-	commands ~= UserCommand("v", "version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
+	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data from ROM {offset}");
+	commands ~= UserCommand("ecb", "--extract-car-binary", "Extract car {index} binary data");
+	commands ~= UserCommand("eco", "--extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
+	commands ~= UserCommand("ico", "--import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/file.obj} {Car number to replace}", &importCarObj);
+	commands ~= UserCommand("etb", "--extract-track", "Extract track {index} {variation} binary data");
+	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
+	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
 }

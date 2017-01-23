@@ -43,8 +43,8 @@ class TrackRenderer : Renderer
 
 		//loadSectionVertices();
 		loadTrackVertices();
-		loadCollisionVertices();
-		setupBuffers(collisionVertices);
+		//loadCollisionVertices();
+		setupBuffers(trackVertices);
 	}
 
 	void setupBuffers(Vertex[] vertices)
@@ -185,7 +185,7 @@ class TrackRenderer : Renderer
 		program.use();
 		sectionVAO.bind();
 		vs.use();
-		glDrawArrays(GL_TRIANGLES, 0, collisionVertices.length);
+		glDrawArrays(GL_TRIANGLES, 0, trackVertices.length);
 		sectionVAO.unbind();
 		program.unuse();
 	}

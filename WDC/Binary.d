@@ -332,7 +332,7 @@ public:
 		int zlibOffsetTable = readInt(curTrackData, 0x30);
 
 		enforce(trackVariation < indicesDescriptorOffsetsCount,
-		        format("Error: Given track variation (%d) is greater than number available: %d", trackVariation, indicesDescriptorOffsetsCount));
+		        format("Error: Requested track variation (%d) is greater than number available: %d", trackVariation, indicesDescriptorOffsetsCount));
 
 		int indicesDescriptorLocation = readInt(curTrackData, indicesDescriptorOffsets + (trackVariation * 4));
 		int indicesCount = readInt(curTrackData, indicesDescriptorLocation);
