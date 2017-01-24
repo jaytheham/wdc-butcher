@@ -92,7 +92,7 @@ class Car : Drawable
 		{
 			int[] newIndices = new int[model.vertices.length];
 			int[] removals;
-			bool found = false;
+			bool found;
 			foreach (current, currentVertex; model.vertices)
 			{
 				found = false;

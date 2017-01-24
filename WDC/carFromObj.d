@@ -230,6 +230,7 @@ static class CarFromObj
 		totalUvCount += sectionUvs.length;
 
 		updateLoDs(car, lodVertices, lodNormals);
+		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
 		car.modelToTextureMap[18] = 14; // static wheel
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
@@ -269,16 +270,16 @@ static class CarFromObj
 		{
 			import std.math : abs;
 			uint closestIndex;
-			float distance = 100_000.0;
-			float temp;
+			float minDistance = 100_000.0;
+			float currentDistance;
 			foreach (fromIndex, fromVertex; car.models[0].vertices)
 			{
-				temp = distanceBetween(fromVertex, toVertex);
-				if (abs(temp) < distance)
+				currentDistance = distanceBetween(fromVertex, toVertex);
+				if (abs(currentDistance) < minDistance)
 				{
-					distance = temp;
+					minDistance = currentDistance;
 					closestIndex = fromIndex;
-					if (distance == 0.0)
+					if (minDistance == 0.0)
 					{
 						break;
 					}
@@ -291,16 +292,16 @@ static class CarFromObj
 			import std.math : PI;
 			vec3f lodNormal = vec3f(source.x, source.y, source.z);
 			uint closestIndex;
-			double distance = 100_000.0;
-			double temp;
+			double minDistance = 100_000.0;
+			double currentDistance;
 			foreach (carIndex, carNormal; car.models[0].normals)
 			{
-				temp = angleBetween(lodNormal, vec3f(carNormal.x, carNormal.y, carNormal.z)) * (180.0 / PI);
-				if (temp < distance)
+				currentDistance = angleBetween(lodNormal, vec3f(carNormal.x, carNormal.y, carNormal.z)) * (180.0 / PI);
+				if (currentDistance < minDistance)
 				{
-					distance = temp;
+					minDistance = currentDistance;
 					closestIndex = carIndex;
-					if (distance == 0.0)
+					if (minDistance == 0.0)
 					{
 						break;
 					}
@@ -322,6 +323,37 @@ static class CarFromObj
 				foreach (ref normalIndex; polygon.normalIndices)
 				{
 					normalIndex = findNearestNormal(lodNormals[lod][normalIndex]);
+				}
+			}
+		}
+	}
+
+	private static void shiftWheelTextureMapping(ref Car.Polygon[] polygons)
+	{
+		// Assumes polys are mapped directly on top of the texture, not way off somewhere
+		bool notOffset = false;
+		foreach (Car.Polygon polygon; polygons)
+		{
+			foreach (vec2b uv; polygon.textureCoordinates)
+			{
+				if (uv.y < 38)
+				{
+					notOffset = true;
+					break;
+				}
+			}
+			if (notOffset)
+			{
+				break;
+			}
+		}
+		if (notOffset)
+		{
+			foreach (ref Car.Polygon polygon; polygons)
+			{
+				foreach (ref vec2b uv; polygon.textureCoordinates)
+				{
+					uv.y += (38 * 2);
 				}
 			}
 		}

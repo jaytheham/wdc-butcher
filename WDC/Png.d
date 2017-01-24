@@ -9,7 +9,7 @@ static class Png
 
 	public static ubyte[] wdcTextureToPng(Car.Colour[] palette, ubyte[] texture, uint width, uint height)
 	{
-		assert(width <= 0xFF && height <= 0xFF, "Given texture size unhandled by wdc.Png");
+		enforce(width <= 0xFF && height <= 0xFF, "Given texture size unhandled by wdc.Png");
 
 		ubyte[] result = [137, 'P', 'N', 'G', 13, 10, 26, 10];
 		ubyte[] pngHeader = [0, 0, 0, 0xD,
@@ -192,7 +192,7 @@ static class Png
 		}
 		else
 		{
-			writeln("Warning: Failed to find file ", filePath);
+			writeln("Warning: Failed to find file ", getcwd() ~ "\\" ~ filePath);
 		}
 		
 		return tuple(texture, palette);

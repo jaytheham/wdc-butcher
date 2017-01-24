@@ -248,6 +248,21 @@ private bool extractCarObj(string[] args)
 	return true;
 }
 
+private bool extractCarBinary(string[] args)
+{
+	try
+	{
+		int carIndex = parse!int(args[1]);
+		binaryFile.dumpCarData(carIndex);
+	}
+	catch (ConvException e)
+	{
+		writeln(e.msg);
+		return false;
+	}
+	return true;
+}
+
 private bool importCarObj(string[] args)
 {
 	try
@@ -288,6 +303,49 @@ private void displayTrack(int index, int variation)
 	setWindowVisible(true);
 	writefln("\nDisplaying track #%d variation %d", index, variation);
 	writeln("Press Escape to return to command window");
+}
+
+private bool extractTrackBinary(string[] args)
+{
+	try
+	{
+		int trackIndex = parse!int(args[1]);
+		binaryFile.dumpTrackData(trackIndex);
+	}
+	catch (ConvException e)
+	{
+		writeln(e.msg);
+		return false;
+	}
+	return true;
+}
+
+private bool extractZlibBlock(string[] args)
+{
+	try
+	{
+		bool hexPrefix = indexOf(args[1], "0x") == 0;
+		string offset = chompPrefix(args[1], "0x");
+		int dataOffset = hexPrefix ? parse!int(offset, 16) : parse!int(offset);
+
+		string workingDir = getcwd();
+		string outputDir = workingDir ~ "\\output";
+		if (!exists(outputDir))
+		{
+			mkdir(outputDir);
+		}
+		chdir(outputDir);
+		ubyte[] output = binaryFile.decompressZlibBlock(dataOffset);
+		std.file.write(format("Data_%.8x", dataOffset), output);
+		writefln("Data from %d extracted to %s", dataOffset, outputDir);
+		chdir(workingDir);
+	}
+	catch (Exception e)
+	{
+		writeln(e.msg);
+		return false;
+	}
+	return true;
 }
 
 private bool writeHelp(string[] args)
@@ -339,11 +397,11 @@ private void setupCommands()
 			}
 			return false;
 		});
-	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data from ROM {offset}");
-	commands ~= UserCommand("ecb", "--extract-car-binary", "Extract car {index} binary data");
+	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data from ROM {offset}", "", &extractZlibBlock);
+	commands ~= UserCommand("ecb", "--extract-car-binary", "Extract car {index} binary data", "", &extractCarBinary);
 	commands ~= UserCommand("eco", "--extract-car-obj", "Extract car {index} converted to Wavefront Obj format", "", &extractCarObj);
 	commands ~= UserCommand("ico", "--import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/file.obj} {Car number to replace}", &importCarObj);
-	commands ~= UserCommand("etb", "--extract-track", "Extract track {index} {variation} binary data");
+	commands ~= UserCommand("etb", "--extract-track", "Extract track {index} {variation} binary data", "", &extractTrackBinary);
 	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
 	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
 }

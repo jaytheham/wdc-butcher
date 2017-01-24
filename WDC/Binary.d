@@ -764,7 +764,7 @@ public:
 		} while (spa8 != spb0);
 	}
 
-	void dumpCarData(int index)
+	void dumpCarData(int carIndex)
 	{
 		string workingDir = getcwd();
 		string outputDir = workingDir ~ "\\output";
@@ -774,7 +774,7 @@ public:
 		}
 		chdir(outputDir);
 
-		int carAssetOffset = carAssetsPointer + carAssetsSize * index;
+		int carAssetOffset = carAssetsPointer + carAssetsSize * carIndex;
 		int offset, endOffset;
 		int wordNum = 5;
 
@@ -787,7 +787,7 @@ public:
 				if (binary[offset + 0xc] == 0x78)
 				{
 					auto output = decompressZlibBlock(offset);
-					write(format("%.2d_%.8x", index, offset), output);
+					write(format("Car_%.2d_%.8x", carIndex, offset), output);
 					offset += output.length;
 				}
 				else
@@ -795,10 +795,11 @@ public:
 					writefln("%x not zlib", offset);
 				}
 		}
+		writefln("Car %d data extracted to %s", carIndex, outputDir);
 		chdir(workingDir);
 	}
 
-	void dumpTrackData(int index)
+	void dumpTrackData(int trackIndex)
 	{
 		string workingDir = getcwd();
 		string outputDir = workingDir ~ "\\output";
@@ -808,37 +809,35 @@ public:
 		}
 		chdir(outputDir);
 
-		int trackAssetOffset = trackAssetsPointer + trackAssetsSize * index;
+		int trackAssetOffset = trackAssetsPointer + trackAssetsSize * trackIndex;
 		int offset;
 
 		offset = peek!int(binary[trackAssetOffset + 0x14..trackAssetOffset + 0x14 + 4]);
 
 		auto output = decompressZlibBlock(offset);
-		write(format("Track_%.2d_%.8x", index, offset), output);
+		write(format("Track_%.2d_%.8x", trackIndex, offset), output);
+		writefln("Track %d data extracted to %s", trackIndex, outputDir);
 
 		chdir(workingDir);
 	}
 
 	ubyte[] decompressZlibBlock(int offset)
 	{
-		assert(offset % 2 == 0, "Zlibs are aligned to the nearest halfword, this offset is not");
+		enforce(offset % 2 == 0, format("Zlibs are aligned to the nearest halfword, %i is not", offset));
 		int blockSize = peek!int(binary[offset..offset + 4]);
 		int blockEnd = offset + blockSize;
 		//int blockOutputSize = peek!int(binary[offset + 4..offset + 8]);
 		int zlibSize = 0;
 		ubyte[] output;
-		//writefln("Inflating zlib block from %x", offset);
-		offset += 0x8;
 
+		offset += 0x8;
 		do
 		{
 			offset += zlibSize;
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
 			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
-			//std.file.write(format("%.6X",offset), cast(ubyte[])uncompress(binary[offset..offset + zlibSize]));
-			//writefln("%x inflated", offset);
-
+			
 			if (zlibSize % 2 == 1) // Next file will be aligned to short
 			{
 				zlibSize++;
@@ -953,10 +952,10 @@ private:
 		switch(binary[0])
 		{
 			case 0x80:
-				// Big Endian
+				writeln("ROM byte order: Big Endian");
 				break;
 			case 0x40:
-				// Little Endian
+				writeln("ROM byte order: Little Endian, switched to Big Endian");
 				ubyte heldByte;
 				foreach(i, curByte; binary)
 				{
@@ -973,7 +972,7 @@ private:
 				}
 				break;
 			case 0x37:
-				// Byte Swapped
+				writeln("ROM byte order: Byte Swapped, switched to Big Endian");
 				ubyte evenByte;
 				foreach(i, curByte; binary)
 				{
