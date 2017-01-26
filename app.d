@@ -42,6 +42,8 @@ void main(string[] args)
 
 	binaryFile = getWDCBinary(args);
 
+	setupPathAndFolder();
+
 	auto conLogger = new ConsoleLogger();
 	SDL2 sdl2 = new SDL2(conLogger, SharedLibVersion(2, 0, 0));
 	gl = new OpenGL(conLogger);
@@ -82,6 +84,18 @@ void main(string[] args)
 		{
 			handleCommands();
 		}
+	}
+}
+
+private void setupPathAndFolder()
+{
+	string exePath = thisExePath();
+	string exeFolder = exePath[0..(lastIndexOfAny(exePath, "\\/"))];
+	chdir(exeFolder);
+	string outputDir = exeFolder ~ "\\output";
+	if (!exists(outputDir))
+	{
+		mkdir(outputDir);
 	}
 }
 
@@ -237,8 +251,9 @@ private bool extractCarObj(string[] args)
 	try
 	{
 		int carIndex = parse!int(args[1]);
-		CarToObj.convert(binaryFile.getCar(carIndex));
-		writefln("Car %d extracted to .obj file.", carIndex);
+		string destinationFolder = format("output/%2d", carIndex);
+		CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
+		writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
 	}
 	catch (ConvException e)
 	{
@@ -330,10 +345,6 @@ private bool extractZlibBlock(string[] args)
 
 		string workingDir = getcwd();
 		string outputDir = workingDir ~ "\\output";
-		if (!exists(outputDir))
-		{
-			mkdir(outputDir);
-		}
 		chdir(outputDir);
 		ubyte[] output = binaryFile.decompressZlibBlock(dataOffset);
 		std.file.write(format("Data_%.8x", dataOffset), output);

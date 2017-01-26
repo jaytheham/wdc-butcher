@@ -377,7 +377,7 @@ static class CarFromObj
 			if (line.startsWith("map_Kd "))
 			{
 				lineParts = split(line, "map_Kd ");
-				texturePaths[textureNum] = chomp(lineParts[$ - 1]);
+				texturePaths[textureNum] = path ~ chomp(lineParts[$ - 1]);
 			}
 		}
 		input.close();

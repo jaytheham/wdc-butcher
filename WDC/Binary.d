@@ -24,12 +24,12 @@ private:
 	enum MY_INSERT_ZONE = 0xFE0000;
 
 	uint carAssetsPointer;
-	enum carAssetsSize = 0x80;
-	enum carPaletteSize = 0x20;
+	enum CAR_ASSETS_SIZE = 0x80;
+	enum CAR_PALETTE_SIZE = 0x20;
 	enum carInsertedPalettes = 8;
 
 	uint trackAssetsPointer;
-	enum trackAssetsSize = 0x44;
+	enum TRACK_ASSETS_SIZE = 0x44;
 
 	ubyte[] binary;
 	ubyte[] curTrackData;
@@ -68,8 +68,7 @@ public:
 		loadCarAssets();
 		trackAssetsPointer = binary[0x3e] == 'E' ? 0x91550 : 0x92f40;
 
-		writeln("Loaded ROM:");
-		writeln(cast(char[])binary[0x20..0x34]);
+		writefln("Loaded ROM: %s", cast(char[])binary[0x20..0x34]);
 		writefln("Version detected as %s", (binary[0x3e] == 'E' ? "NTSC" : "PAL"));
 	}
 
@@ -92,27 +91,26 @@ public:
 				nameSize++;
 			}
 			carNames ~= cast(char[])binary[nameOffset..(nameOffset + nameSize)];
-			offset += carAssetsSize;
+			offset += CAR_ASSETS_SIZE;
 		}
 		return carNames;
 	}
 
 	Car getCar(int carIndex)
 	{
-		int carAssetOffset = carAssetsPointer + carAssetsSize * carIndex;
-		int dataBlobOffset = peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
-		int textureBlobOffset = peek!int(binary[carAssetOffset + 0x1c..carAssetOffset + 0x20]);
+		int carAssetOffset = carAssetsPointer + (CAR_ASSETS_SIZE * carIndex);
+		int dataOffset =      peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
+		int texturesOffset =  peek!int(binary[carAssetOffset + 0x1C..carAssetOffset + 0x20]);
 		int palettesAOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
 		int palettesBOffset = peek!int(binary[carAssetOffset + 0x2C..carAssetOffset + 0x30]);
 		int palettesCOffset = peek!int(binary[carAssetOffset + 0x34..carAssetOffset + 0x38]);
 
-		//write(format("%.2d car main zlib", carIndex), decompressZlibBlock(dataBlobOffset));
-		return CarFromBinaries.convert(decompressZlibBlock(dataBlobOffset),
-		               decompressZlibBlock(textureBlobOffset),
+		return CarFromBinaries.convert(decompressZlibBlock(dataOffset),
+		               decompressZlibBlock(texturesOffset),
 		               // assuming palettes are always 0x100 in size ...
-		               binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * carPaletteSize)],
-		               binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * carPaletteSize)],
-		               binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * carPaletteSize)]);
+		               binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * CAR_PALETTE_SIZE)],
+		               binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * CAR_PALETTE_SIZE)],
+		               binary[palettesCOffset..palettesCOffset + (carInsertedPalettes * CAR_PALETTE_SIZE)]);
 	}
 
 	void insertCar(Car car, int carIndex)
@@ -203,7 +201,7 @@ public:
 				nameSize++;
 			}
 			trackNames ~= cast(char[])binary[nameOffset..(nameOffset + nameSize)];
-			offset += trackAssetsSize;
+			offset += TRACK_ASSETS_SIZE;
 		}
 		return trackNames;
 	}
@@ -211,7 +209,7 @@ public:
 	Track getTrack(int trackIndex, int trackVariation)
 	{
 		// get first zlib from tracks table
-		int trackAsset = trackAssetsPointer + (trackAssetsSize * trackIndex);
+		int trackAsset = trackAssetsPointer + (TRACK_ASSETS_SIZE * trackIndex);
 		int zlibOffset = readInt(binary, trackAsset + 0x14);
 		int firstZlibEnd = readInt(binary, zlibOffset) + zlibOffset;
 
@@ -768,13 +766,9 @@ public:
 	{
 		string workingDir = getcwd();
 		string outputDir = workingDir ~ "\\output";
-		if (!exists(outputDir))
-		{
-			mkdir(outputDir);
-		}
 		chdir(outputDir);
 
-		int carAssetOffset = carAssetsPointer + carAssetsSize * carIndex;
+		int carAssetOffset = carAssetsPointer + CAR_ASSETS_SIZE * carIndex;
 		int offset, endOffset;
 		int wordNum = 5;
 
@@ -803,13 +797,9 @@ public:
 	{
 		string workingDir = getcwd();
 		string outputDir = workingDir ~ "\\output";
-		if (!exists(outputDir))
-		{
-			mkdir(outputDir);
-		}
 		chdir(outputDir);
 
-		int trackAssetOffset = trackAssetsPointer + trackAssetsSize * trackIndex;
+		int trackAssetOffset = trackAssetsPointer + TRACK_ASSETS_SIZE * trackIndex;
 		int offset;
 
 		offset = peek!int(binary[trackAssetOffset + 0x14..trackAssetOffset + 0x14 + 4]);
@@ -837,7 +827,7 @@ public:
 			zlibSize = peek!int(binary[offset..offset + 4]);
 			offset += 4;
 			output ~= cast(ubyte[])uncompress(binary[offset..offset + zlibSize]);
-			
+
 			if (zlibSize % 2 == 1) // Next file will be aligned to short
 			{
 				zlibSize++;

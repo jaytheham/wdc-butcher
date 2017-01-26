@@ -4,19 +4,19 @@ import std.stdio, std.file, wdc.car;
 
 static class CarToObj
 {
-	static void convert(Car car)
+	static void convert(Car car, string destinationFolder)
 	{
 		import std.conv;
 		
-		if (!exists("output") || !("output".isDir))
+		if (!exists(destinationFolder) || !(destinationFolder.isDir))
 		{
-			mkdir("output");
+			mkdir(destinationFolder);
 		}
-		outputTextures(car, 0);
-		outputTextures(car, 1);
-		outputTextures(car, 2);
+		outputTextures(car, 0, destinationFolder);
+		outputTextures(car, 1, destinationFolder);
+		outputTextures(car, 2, destinationFolder);
 
-		File output = File("output/car.obj", "w");
+		File output = File(destinationFolder ~ "/car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
 
@@ -99,14 +99,14 @@ static class CarToObj
 		output.close();
 	}
 
-	private static void outputTextures(Car car, int paletteSet)
+	private static void outputTextures(Car car, int paletteSet, string destinationFolder)
 	{
 		import wdc.png;
 		import std.string : format;
 		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
 		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
 		
-		File materialLibrary = File("output/car.mtl", "w");
+		File materialLibrary = File(destinationFolder ~ "/car.mtl", "w");
 		Car.Colour[] palette;
 
 		void writeTexture(ubyte[] textureBytes, int alternate, int textureNum, int modelNum)
@@ -116,11 +116,11 @@ static class CarToObj
 			if (alternate == 0)
 			{
 				materialLibrary.writeln("newmtl ", textureNum);
-				materialLibrary.writeln("illum 0");
-				materialLibrary.writeln(format("map_Kd -clamp on %d_car%.2d_p%d_%d.png", 0, textureNum, paletteIndex, alternate));
+				materialLibrary.writeln("illum 1");
+				materialLibrary.writeln(format("map_Kd %d_car%.2d_p%d_%d.png", 0, textureNum, paletteIndex, alternate));
 			}
 			
-			File textureFile = File(format("output/%d_car%.2d_p%d_%d.png", paletteSet, textureNum, paletteIndex, alternate), "wb");
+			File textureFile = File(format(destinationFolder ~ "/%d_car%.2d_p%d_%d.png", paletteSet, textureNum, paletteIndex, alternate), "wb");
 			palette = car.paletteSets[paletteSet][paletteIndex];
 			textureFile.rawWrite(Png.wdcTextureToPng(palette, textureBytes, TEXTURE_WIDTH, TEXTURE_HEIGHT));
 			textureFile.close();
