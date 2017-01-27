@@ -12,11 +12,11 @@ static class CarToObj
 		{
 			mkdir(destinationFolder);
 		}
-		outputTextures(car, 0, destinationFolder);
-		outputTextures(car, 1, destinationFolder);
 		outputTextures(car, 2, destinationFolder);
+		outputTextures(car, 1, destinationFolder);
+		outputTextures(car, 0, destinationFolder);
 
-		File output = File(destinationFolder ~ "/car.obj", "w");
+		File output = File(destinationFolder ~ "car.obj", "w");
 		int normalOffset = 1;
 		int vertexOffest = 1;
 
@@ -103,24 +103,22 @@ static class CarToObj
 	{
 		import wdc.png;
 		import std.string : format;
-		enum byte TEXTURE_WIDTH = 80, TEXTURE_HEIGHT = 38;
-		enum int TEXTURE_SIZE_BYTES = (TEXTURE_WIDTH * TEXTURE_HEIGHT) / 2;
+		enum byte TEXTURE_WIDTH = Car.TEXTURE_WIDTH_BYTES * 2;
+		enum byte TEXTURE_HEIGHT = Car.TEXTURE_HEIGHT_BYTES;
 		
-		File materialLibrary = File(destinationFolder ~ "/car.mtl", "w");
+		File materialLibrary = File(destinationFolder ~ "car.mtl", "w");
 		Car.Colour[] palette;
 
-		void writeTexture(ubyte[] textureBytes, int alternate, int textureNum, int modelNum)
+		void writeTexture(ubyte[] textureBytes, int textureNum, int modelNum)
 		{
-			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum + alternate];
+			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum];
+			string fileName = format("%d_t%.2d_p%.2d_m%.2d.png", paletteSet, textureNum, paletteIndex, modelNum);
 
-			if (alternate == 0)
-			{
-				materialLibrary.writeln("newmtl ", textureNum);
-				materialLibrary.writeln("illum 1");
-				materialLibrary.writeln(format("map_Kd %d_car%.2d_p%d_%d.png", 0, textureNum, paletteIndex, alternate));
-			}
+			materialLibrary.writeln("newmtl ", textureNum);
+			materialLibrary.writeln("illum 1");
+			materialLibrary.writeln("map_Kd " ~ fileName);
 			
-			File textureFile = File(format(destinationFolder ~ "/%d_car%.2d_p%d_%d.png", paletteSet, textureNum, paletteIndex, alternate), "wb");
+			File textureFile = File(destinationFolder ~ fileName, "wb");
 			palette = car.paletteSets[paletteSet][paletteIndex];
 			textureFile.rawWrite(Png.wdcTextureToPng(palette, textureBytes, TEXTURE_WIDTH, TEXTURE_HEIGHT));
 			textureFile.close();
@@ -128,7 +126,7 @@ static class CarToObj
 
 		foreach (textureIndex, texture; car.textures)
 		{
-			if (texture.length != TEXTURE_SIZE_BYTES)
+			if (texture.length != Car.TEXTURE_SIZE_BYTES)
 			{
 				continue;
 			}
@@ -136,14 +134,8 @@ static class CarToObj
 			{
 				if (mapTextureIndex == textureIndex)
 				{
-					writeTexture(texture, 0, textureIndex, modelIndex);
-					// For the second of each light, we're outputting the lit version of the texture
 					// TODO: some cars have a third palette for the rear lights when reversing?
-					if (modelIndex == 19 || modelIndex == 21)
-					{
-						writeTexture(texture, 1, textureIndex, modelIndex);
-					}
-					break;
+					writeTexture(texture, textureIndex, modelIndex);
 				}
 			}
 		}

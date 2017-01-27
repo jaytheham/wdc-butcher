@@ -16,10 +16,13 @@ class Car : Drawable
 	{
 		enum COLOURS_PER_PALETTE = 0x10;
 		enum PALETTES_PER_SET = 8;
+		enum TEXTURE_WIDTH_BYTES = 40;
+		enum TEXTURE_HEIGHT_BYTES = 38;
+		enum TEXTURE_SIZE_BYTES = TEXTURE_WIDTH_BYTES * TEXTURE_HEIGHT_BYTES;
 		const static string OBJ_WHEEL_ID = "wheel_origins";
 		const static string OBJ_LIGHT_ID = "light_origins";
 		const static ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                                         0,1,2,4,5,6,7,1,1,1,3,3,3,3,2,2,
+		                                         0,1,2,4,5,6,7,1,1,0,3,3,3,2,2,2,
 		                                         2,2,2,2,2,2,2,2,2,2,2];
 		                                         // cheat by saying second light of each pair uses lit palette
 		const static string[] partNames = [
@@ -47,7 +50,7 @@ class Car : Drawable
 		vec3f[4] lightOrigins;
 		// Car 4 has an 0xA0 entry for all 0x29 model sections because they all have data
 		// this must be variable in size, but also correct (?) (car 0 must be 0x22)
-		uint[0x22] modelToTextureMap;
+		uint[] modelToTextureMap;
 		// if a modelsection is empty (i.e. the roof ornament, it has an "empty" texture descriptor that uses no space)
 		// sometimes they have a size of 8, often model[1]section[0] does
 		ubyte[][] textures;

@@ -46,32 +46,32 @@ static class CarFromBinaries
 		int textureDescriptorPointers = binary.readInt(0xB4);
 		int textureDescriptorCount = binary.readInt(0xB8);
 
-		int descriptorLocation;
+		int descriptorPointer;
 		int textureDescriptorSize, actualTextureSize;
 		int destination, nextDestination, sourcePosition = 0;
 
+		car.modelToTextureMap.length = modelToTextureCount;
 		car.textures.length = textureDescriptorCount;
 
 		foreach(index; 0..textureDescriptorCount)
 		{
-			descriptorLocation = binary.readInt(textureDescriptorPointers + (index * 4));
-			destination = binary.readInt(descriptorLocation + 4);
-			nextDestination = binary.readInt(descriptorLocation + 0x20 + 4);
-			actualTextureSize = nextDestination - destination;
-			textureDescriptorSize = (((binary.readInt(descriptorLocation + 0x14) >> 12) & 0xFFF) + 1) << 1;
-			if (index == textureDescriptorCount - 1)
+			descriptorPointer = binary.readInt(textureDescriptorPointers + (index * 4));
+			actualTextureSize = textureDescriptorSize = (((binary.readInt(descriptorPointer + 0x14) >> 12) & 0xFFF) + 1) << 1;
+			if (textureDescriptorSize < Car.TEXTURE_SIZE_BYTES)
 			{
-				actualTextureSize = textureDescriptorSize;
+				destination = binary.readInt(descriptorPointer + 4);
+				nextDestination = binary.readInt(descriptorPointer + 0x20 + 4);
+				actualTextureSize = nextDestination - destination;
 			}
 			car.textures[index] = binaryTextures[sourcePosition..sourcePosition + actualTextureSize];
-			if (actualTextureSize > 8)
+			if (actualTextureSize == Car.TEXTURE_SIZE_BYTES)
 			{
-				wordSwapOddRows(car.textures[index], 40, 38);
+				wordSwapOddRows(car.textures[index], Car.TEXTURE_WIDTH_BYTES, Car.TEXTURE_HEIGHT_BYTES);
 			}
 			sourcePosition += textureDescriptorSize;
 			foreach(mIndex; 0..modelToTextureCount)
 			{
-				if (binary.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorLocation)
+				if (binary.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorPointer)
 				{
 					car.modelToTextureMap[mIndex] = index;
 				}
@@ -132,14 +132,14 @@ static class CarFromBinaries
 		int nextmodelSectionAddressSource = 0xF4;
 		int modelSectionAddress = binary.readInt(nextmodelSectionAddressSource);
 		int previousmodelSectionAddress = 0;
-		int verticesPointer = 0, normalsPointer, polygonsPointer, verticesCount, normalsCount, polygonsCount;
+		int verticesPointer = 0, normalsPointer, polygonPointer, verticesCount, normalsCount, polygonsCount;
 		int currentModelNum = -1;
 		Car.Model currentModel;
 		Car.ModelSection currentModelSection;
 		while (modelSectionAddress != 0)
 		{
-			if (binary.readInt(modelSectionAddress) == modelSectionAddress
-				|| modelSectionAddress == previousmodelSectionAddress)
+			if (binary.readInt(modelSectionAddress) == modelSectionAddress ||
+				modelSectionAddress == previousmodelSectionAddress)
 			{
 				nextmodelSectionAddressSource += 0x10;
 				modelSectionAddress = binary.readInt(nextmodelSectionAddressSource);
@@ -169,29 +169,30 @@ static class CarFromBinaries
 				currentModelNum++;
 				car.models[currentModelNum] = currentModel;
 			}
-			polygonsPointer = binary.readInt(modelSectionAddress + 8);
+			polygonPointer = binary.readInt(modelSectionAddress + 8);
 			polygonsCount   = binary.readInt(modelSectionAddress + 12);
 			currentModelSection = Car.ModelSection(new Car.Polygon[polygonsCount]);
 			foreach (i; 0..polygonsCount)
 			{
 				currentModelSection.polygons[i] =
-					Car.Polygon([binary.readUshort(polygonsPointer + 8  + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 10 + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 12 + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 14 + (i * 0x20))],
-					            [vec2b(cast(byte)binary[polygonsPointer + 16 + (i * 0x20)],
-					                   cast(byte)binary[polygonsPointer + 17 + (i * 0x20)]),
-					             vec2b(cast(byte)binary[polygonsPointer + 18 + (i * 0x20)],
-					                   cast(byte)binary[polygonsPointer + 19 + (i * 0x20)]),
-					             vec2b(cast(byte)binary[polygonsPointer + 20 + (i * 0x20)],
-					                   cast(byte)binary[polygonsPointer + 21 + (i * 0x20)]),
-					             vec2b(cast(byte)binary[polygonsPointer + 22 + (i * 0x20)],
-					                   cast(byte)binary[polygonsPointer + 23 + (i * 0x20)])],
-					            [binary.readUshort(polygonsPointer + 24 + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 26 + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 28 + (i * 0x20)),
-					             binary.readUshort(polygonsPointer + 30 + (i * 0x20))]
+					Car.Polygon([binary.readUshort(polygonPointer + 8),
+					             binary.readUshort(polygonPointer + 10),
+					             binary.readUshort(polygonPointer + 12),
+					             binary.readUshort(polygonPointer + 14)],
+					            [vec2b(cast(byte)binary[polygonPointer + 16],
+					                   cast(byte)binary[polygonPointer + 17]),
+					             vec2b(cast(byte)binary[polygonPointer + 18],
+					                   cast(byte)binary[polygonPointer + 19]),
+					             vec2b(cast(byte)binary[polygonPointer + 20],
+					                   cast(byte)binary[polygonPointer + 21]),
+					             vec2b(cast(byte)binary[polygonPointer + 22],
+					                   cast(byte)binary[polygonPointer + 23])],
+					            [binary.readUshort(polygonPointer + 24),
+					             binary.readUshort(polygonPointer + 26),
+					             binary.readUshort(polygonPointer + 28),
+					             binary.readUshort(polygonPointer + 30)]
 					           );
+				polygonPointer += 0x20;
 			}
 			car.models[currentModelNum].modelSections ~= currentModelSection;
 

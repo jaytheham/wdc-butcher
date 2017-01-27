@@ -251,7 +251,7 @@ private bool extractCarObj(string[] args)
 	try
 	{
 		int carIndex = parse!int(args[1]);
-		string destinationFolder = format("output/%2d", carIndex);
+		string destinationFolder = format("output/car %.2d/", carIndex);
 		CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
 		writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
 	}

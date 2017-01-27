@@ -5,8 +5,6 @@ import std.zlib, std.stdio, std.exception, std.typecons,
 
 static class Png
 {
-	static uint[256] crcTable;
-
 	public static ubyte[] wdcTextureToPng(Car.Colour[] palette, ubyte[] texture, uint width, uint height)
 	{
 		enforce(width <= 0xFF && height <= 0xFF, "Given texture size unhandled by wdc.Png");
@@ -65,37 +63,6 @@ static class Png
 		iend ~= getCrc(iend[4..$]);
 		result ~= iend;
 		return result;
-	}
-
-	private static ubyte[] getCrc(ubyte[] stream, uint crc = 0)
-	{
-		uint c;
-		if (crcTable[1] == 0)
-		{
-			foreach (n; 0..256)
-			{
-				c = n;
-				foreach (k; 0..8)
-				{
-					if ((c & 1) == 1)
-					{
-						c = 0xEDB88320 ^ ((c >> 1) & 0x7FFFFFFF);
-					}
-					else
-					{
-						c = ((c >> 1) & 0x7FFFFFFF);
-					}
-				}
-				crcTable[n] = c;
-			}
-		}
-		c = crc ^ 0xffffffff;
-		foreach(piece; stream)
-		{
-			c = crcTable[(c ^ piece) & 255] ^ ((c >> 8) & 0xFFFFFF);
-		}
-		c = c ^ 0xffffffff;
-		return [(c >> 24) & 0xff, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
 	}
 
 	public static Tuple!(ubyte[],Car.Colour[]) pngToWdcTexture(string filePath)
@@ -196,5 +163,38 @@ static class Png
 		}
 		
 		return tuple(texture, palette);
+	}
+
+	private static uint[256] crcTable;
+
+	private static ubyte[] getCrc(ubyte[] stream, uint crc = 0)
+	{
+		uint c;
+		if (crcTable[1] == 0)
+		{
+			foreach (n; 0..256)
+			{
+				c = n;
+				foreach (k; 0..8)
+				{
+					if ((c & 1) == 1)
+					{
+						c = 0xEDB88320 ^ ((c >> 1) & 0x7FFFFFFF);
+					}
+					else
+					{
+						c = ((c >> 1) & 0x7FFFFFFF);
+					}
+				}
+				crcTable[n] = c;
+			}
+		}
+		c = crc ^ 0xffffffff;
+		foreach(piece; stream)
+		{
+			c = crcTable[(c ^ piece) & 255] ^ ((c >> 8) & 0xFFFFFF);
+		}
+		c = c ^ 0xffffffff;
+		return [(c >> 24) & 0xff, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
 	}
 }
