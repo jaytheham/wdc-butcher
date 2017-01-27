@@ -109,10 +109,10 @@ static class CarToObj
 		File materialLibrary = File(destinationFolder ~ "car.mtl", "w");
 		Car.Colour[] palette;
 
-		void writeTexture(ubyte[] textureBytes, int textureNum, int modelNum)
+		void writeTexture(ubyte[] textureBytes, int textureNum, int modelNum, int forceLitPalette)
 		{
-			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum];
-			string fileName = format("%d_t%.2d_p%.2d_m%.2d.png", paletteSet, textureNum, paletteIndex, modelNum);
+			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum] + forceLitPalette;
+			string fileName = format("set%d_tex%.2d_pal%.2d.png", paletteSet, textureNum, paletteIndex);
 
 			materialLibrary.writeln("newmtl ", textureNum);
 			materialLibrary.writeln("illum 1");
@@ -135,7 +135,11 @@ static class CarToObj
 				if (mapTextureIndex == textureIndex)
 				{
 					// TODO: some cars have a third palette for the rear lights when reversing?
-					writeTexture(texture, textureIndex, modelIndex);
+					writeTexture(texture, textureIndex, modelIndex, 0);
+					if (modelIndex == 19 || modelIndex == 21)
+					{
+						writeTexture(texture, textureIndex, modelIndex, 1);
+					}
 				}
 			}
 		}

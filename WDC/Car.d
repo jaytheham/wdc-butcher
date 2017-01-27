@@ -22,7 +22,7 @@ class Car : Drawable
 		const static string OBJ_WHEEL_ID = "wheel_origins";
 		const static string OBJ_LIGHT_ID = "light_origins";
 		const static ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
-		                                         0,1,2,4,5,6,7,1,1,0,3,3,3,2,2,2,
+		                                         0,1,2,4,4,6,6,1,1,0,3,3,3,2,2,2,
 		                                         2,2,2,2,2,2,2,2,2,2,2];
 		                                         // cheat by saying second light of each pair uses lit palette
 		const static string[] partNames = [
