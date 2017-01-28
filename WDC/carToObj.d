@@ -112,7 +112,9 @@ static class CarToObj
 		void writeTexture(ubyte[] textureBytes, int textureNum, int modelNum, int forceLitPalette)
 		{
 			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum] + forceLitPalette;
-			string fileName = format("set%d_tex%.2d_pal%.2d.png", paletteSet, textureNum, paletteIndex);
+			string fileName = modelNum > 29
+			                  ? format("set%d_wheel_%d.png", paletteSet, modelNum - 30)
+			                  : format("set%d_tex%.2d_pal%.2d.png", paletteSet, textureNum, paletteIndex);
 
 			materialLibrary.writeln("newmtl ", textureNum);
 			materialLibrary.writeln("illum 1");
@@ -124,6 +126,7 @@ static class CarToObj
 			textureFile.close();
 		}
 
+		int wheelNum = 0;
 		foreach (textureIndex, texture; car.textures)
 		{
 			if (texture.length != Car.TEXTURE_SIZE_BYTES)
@@ -135,7 +138,7 @@ static class CarToObj
 				if (mapTextureIndex == textureIndex)
 				{
 					// TODO: some cars have a third palette for the rear lights when reversing?
-					writeTexture(texture, textureIndex, modelIndex, 0);
+					writeTexture(texture, textureIndex, modelIndex > 29 ? 30 + wheelNum++ : modelIndex, 0);
 					if (modelIndex == 19 || modelIndex == 21)
 					{
 						writeTexture(texture, textureIndex, modelIndex, 1);
