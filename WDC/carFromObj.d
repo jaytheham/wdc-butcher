@@ -25,6 +25,7 @@ static class CarFromObj
 		vec3b[][3] lodNormals;
 		
 		Car car = new Car();
+		car.modelToTextureMap.length = 0x22;
 		File input = File(objFilePath, "r");
 
 		void facesToPolygons(bool isLoD)
@@ -210,17 +211,14 @@ static class CarFromObj
 				car.modelToTextureMap[modelSection] = materialIndex;
 				car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
 
-				int fileNameStart = lastIndexOf(materialPaths[materialIndex], '/');
-				fileNameStart = fileNameStart == -1 ? lastIndexOf(materialPaths[materialIndex], '\\') : fileNameStart;
-				fileNameStart = fileNameStart == -1 ? 1 : fileNameStart + 1;
-				string sourcePath = materialPaths[materialIndex][0..fileNameStart];
-				string fileEnd = materialPaths[materialIndex][fileNameStart + 1..$];
-				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "1" ~ fileEnd)
-				                                                       ? Png.pngToWdcTexture(sourcePath ~ "1" ~ fileEnd)[1]
+				string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
+				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+				                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
 				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 
-				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(sourcePath ~ "2" ~ fileEnd)
-				                                                       ? Png.pngToWdcTexture(sourcePath ~ "2" ~ fileEnd)[1]
+				altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set2" ~ materialPaths[materialIndex][$-16..$];
+				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+				                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
 				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 			}
 		}
@@ -232,20 +230,21 @@ static class CarFromObj
 		updateLoDs(car, lodVertices, lodNormals);
 		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
-		car.modelToTextureMap[18] = 14; // static wheel
+		//TODO check all this hardcoded shit is accurate
+		car.modelToTextureMap[18] = 14; // static wheel, 18 is usually empty
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png")[0];
-		car.paletteSets[0][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "0_car22_p2_0.png")[1];
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "1_car22_p2_0.png")[1];
-		car.paletteSets[2][Car.MODEL_TO_PALETTE[0x1E]] = Png.pngToWdcTexture(sourcePath ~ "2_car22_p2_0.png")[1];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car23_p2_0.png")[0];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car24_p2_0.png")[0];
-		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "0_car25_p2_0.png")[0];
-		car.modelToTextureMap[0x1E] = 22;
-		car.modelToTextureMap[0x1F] = 23;
-		car.modelToTextureMap[0x20] = 24;
-		car.modelToTextureMap[0x21] = 25;
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[0];
+		car.modelToTextureMap[30] = car.textures.length - 1;
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_1.png")[0];
+		car.modelToTextureMap[31] = car.textures.length - 1;
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_2.png")[0];
+		car.modelToTextureMap[32] = car.textures.length - 1;
+		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_3.png")[0];
+		car.modelToTextureMap[33] = car.textures.length - 1;
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[1];
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set1_wheel_0.png")[1];
+		car.paletteSets[2][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set2_wheel_0.png")[1];
 
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();

@@ -155,7 +155,7 @@ private auto createSDLWindow(SDL2 sdl2)
 private void handleCommands()
 {
 	std.stdio.write("\nWaiting for input: ");
-	string[] args = readln().removechars("{}").split();
+	string[] args = splitCommands(chomp(readln()));
 	if (args.length > 0)
 	{
 		writeln();
@@ -172,6 +172,51 @@ private void handleCommands()
 		}
 		writeHelp(null);
 	}
+}
+
+private string[] splitCommands(string input)
+{
+	// assume no nested quotes
+	string[] output;
+	int start;
+	bool inQuote = false;
+	foreach (i, c; input)
+	{
+		if (c == '"') {
+
+			if (inQuote)
+			{
+				output ~= input[start..i];
+				inQuote = false;
+				start = -1;
+			}
+			else
+			{
+				start = i + 1;
+				inQuote = true;
+			}
+		}
+		else if (c == ' ')
+		{
+			if (!inQuote && start != -1)
+			{
+				output ~= input[start..i];
+				start = -1;
+			}
+		}
+		else
+		{
+			if (start == -1)
+			{
+				start = i;
+			}
+		}
+	}
+	if (start != -1)
+	{
+		output ~= input[start..$];
+	}
+	return output;
 }
 
 private void handleInput(SDL2 sdl2)
@@ -251,7 +296,7 @@ private bool extractCarObj(string[] args)
 	try
 	{
 		int carIndex = parse!int(args[1]);
-		string destinationFolder = format("output/car %.2d/", carIndex);
+		string destinationFolder = format("output/car%.2d/", carIndex);
 		CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
 		writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
 	}
@@ -282,6 +327,10 @@ private bool importCarObj(string[] args)
 {
 	try
 	{
+		if (args.length < 3)
+		{
+			throw new Exception("Missing argument(s)");
+		}
 		selectedObject = CarFromObj.convert(args[1]);
 		binaryFile.insertCar(cast(Car)selectedObject, parse!int(args[2]));
 	}
