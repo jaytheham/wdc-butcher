@@ -1,6 +1,6 @@
 module wdc.carToObj;
 
-import std.stdio, std.file, wdc.car;
+import std.stdio, std.file, wdc.car, gfm.math;
 
 static class CarToObj
 {
@@ -17,8 +17,6 @@ static class CarToObj
 		outputTextures(car, 0, destinationFolder);
 
 		File output = File(destinationFolder ~ "car.obj", "w");
-		int normalOffset = 1;
-		int vertexOffest = 1;
 
 		output.writeln("mtllib car.mtl");
 
@@ -28,34 +26,18 @@ static class CarToObj
 		output.writeln("v ", car.wheelOrigins[2].x, " ", car.wheelOrigins[2].y, " ", car.wheelOrigins[2].z);
 		output.writeln("v ", car.wheelOrigins[3].x, " ", car.wheelOrigins[3].y, " ", car.wheelOrigins[3].z);
 		output.writeln("l 1 2 3 4 1");
-		vertexOffest += 4;
 
 		output.writeln("o ", Car.OBJ_LIGHT_ID);
 		output.writeln("v ", car.lightOrigins[0].x, " ", car.lightOrigins[0].y, " ", car.lightOrigins[0].z);
 		output.writeln("v ", car.lightOrigins[1].x, " ", car.lightOrigins[1].y, " ", car.lightOrigins[1].z);
 		output.writeln("v ", car.lightOrigins[2].x, " ", car.lightOrigins[2].y, " ", car.lightOrigins[2].z);
 		output.writeln("v ", car.lightOrigins[3].x, " ", car.lightOrigins[3].y, " ", car.lightOrigins[3].z);
-		output.writeln("l ", vertexOffest, " ", vertexOffest + 1, " ", vertexOffest + 2,
-		               " ", vertexOffest + 3, " ", vertexOffest);
-		vertexOffest += 4;
+		output.writeln("l 5 6 7 8 5");
 
 		bool hasNormals;
+		bool hasFourVerts = false;
 		foreach (modelIndex, model; car.models)
 		{
-			foreach (vertex; model.vertices)
-			{
-				output.writeln("v ", vertex.x / 256.0, " ",
-				                     vertex.y / 256.0, " ",
-				                     vertex.z / 256.0);
-			}
-			
-			foreach (normal; model.normals)
-			{
-				output.writeln("vn ", normal.x / 127.0, " ",
-				                      normal.y / 127.0, " ",
-				                      normal.z / 127.0);
-			}
-
 			foreach (sectionIndex, section; model.modelSections)
 			{
 				if (modelIndex == 0)
@@ -71,30 +53,51 @@ static class CarToObj
 				hasNormals = model.normals.length > 0;
 				foreach (polygon; section.polygons)
 				{
+					foreach (polygonIndex; polygon.vertexIndices)
+					{
+						if (polygonIndex == 0xFFFF) // will always be the last index
+						{
+							hasFourVerts = false;
+							continue;
+						}
+						vec3s vertex = model.vertices[polygonIndex];
+						output.writeln("v ", vertex.x / 256.0, " ",
+						                     vertex.y / 256.0, " ",
+						                     vertex.z / 256.0);
+						hasFourVerts = true;
+					}
+					if (hasNormals)
+					{
+						foreach (normalIndex; polygon.normalIndices)
+						{
+							vec3b normal = model.normals[normalIndex];
+							output.writeln("vn ", normal.x / 127.0, " ",
+							                      normal.y / 127.0, " ",
+							                      normal.z / 127.0);
+						}
+					}
 					foreach (uv; polygon.textureCoordinates)
 					{
 						output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
 					}
-					output.write("f ", polygon.vertexIndices[0] + vertexOffest, "/-4/",
-					                   hasNormals ? to!string(polygon.normalIndices[0] + normalOffset) : "", " ",
+					output.write("f ", hasFourVerts ? "-4" : "-3",
+						               "/-4/",
+					                   hasNormals ? "-4" : "", " ",
 
-					                   polygon.vertexIndices[1] + vertexOffest, "/-3/",
-					                   hasNormals ? to!string(polygon.normalIndices[1] + normalOffset) : "", " ",
+					                   hasFourVerts ? "-3" : "-2",
+					                   "/-3/",
+					                   hasNormals ? "-3" : "", " ",
 
-					                   polygon.vertexIndices[2] + vertexOffest, "/-2/",
-					                   hasNormals ? to!string(polygon.normalIndices[2] + normalOffset) : "");
-
-					if (polygon.vertexIndices[3] != 0xFFFF)
+					                   hasFourVerts ? "-2" : "-1",
+					                   "/-2/",
+					                   hasNormals ? "-2" : "");
+					if (hasFourVerts)
 					{
-						output.write(" ", polygon.vertexIndices[3] + vertexOffest, "/-1/",
-						             hasNormals ? to!string(polygon.normalIndices[3] + normalOffset) : "");
+						output.write(" -1/-1/", hasNormals ? "-1" : "");
 					}
 					output.writeln("");
-					
 				}
 			}
-			normalOffset += model.normals.length;
-			vertexOffest += model.vertices.length;
 		}
 		output.close();
 	}
