@@ -29,7 +29,7 @@ private
 		string longCommand;
 		string description;
 		string usage;
-		bool function(string[] args) run;
+		void function(string[] args) run;
 	}
 	UserCommand[] commands;
 }
@@ -163,9 +163,14 @@ private void handleCommands()
 		{
 			if (cmd.shortCommand == args[0] || cmd.longCommand == args[0])
 			{
-				if (!cmd.run(args))
+				try
 				{
-					writeln(cmd.usage);
+					cmd.run(args);
+				}
+				catch (Exception e)
+				{
+					//writeln(e.info);
+					writeln(e.msg, "\n", e.file, " ", e.line, "\n\n", cmd.usage);
 				}
 				return;
 			}
@@ -271,14 +276,13 @@ private void setOpenGLState()
 	gl.redirectDebugOutput();
 }
 
-private bool listCars(string[] args)
+private void listCars(string[] args)
 {
 	writeln("\nIndex\tCar Name");
 	writeln("-----\t--------\n");
 	foreach(index, carName; binaryFile.getCarList()){
 		writefln("%d\t%s", index, carName);
 	}
-	return true;
 }
 
 private void displayCar(int index)
@@ -291,124 +295,71 @@ private void displayCar(int index)
 	writeln("W A S D and mouse to move camera.\n1 & 2 to cycle through visible parts.\n3 & 4 to change current palette.\np to switch wireframe mode.");
 }
 
-private bool extractCarObj(string[] args)
+private void extractCarObj(string[] args)
 {
-	try
-	{
-		int carIndex = parse!int(args[1]);
-		string destinationFolder = format("output/car%.2d/", carIndex);
-		CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
-		writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
-	}
-	catch (ConvException e)
-	{
-		writeln(e.msg);
-		return false;
-	}
-	return true;
+	int carIndex = parse!int(args[1]);
+	string destinationFolder = format("output/car%.2d/", carIndex);
+	CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
+	writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
 }
 
-private bool extractCarBinary(string[] args)
+private void extractCarBinary(string[] args)
 {
-	try
-	{
-		int carIndex = parse!int(args[1]);
-		binaryFile.dumpCarData(carIndex);
-	}
-	catch (ConvException e)
-	{
-		writeln(e.msg);
-		return false;
-	}
-	return true;
+	int carIndex = parse!int(args[1]);
+	binaryFile.dumpCarData(carIndex);
 }
 
-private bool importCarObj(string[] args)
+private void importCarObj(string[] args)
 {
-	try
+	if (args.length < 3)
 	{
-		if (args.length < 3)
-		{
-			throw new Exception("Missing argument(s)");
-		}
-		selectedObject = CarFromObj.convert(args[1]);
-		binaryFile.insertCar(cast(Car)selectedObject, parse!int(args[2]));
+		throw new Exception("Missing argument(s)");
 	}
-	catch (Exception e)
-	{
-		writeln(e.msg);
-		return false;
-	}
-	return true;
+	selectedObject = CarFromObj.convert(args[1]);
+	binaryFile.insertCar(cast(Car)selectedObject, parse!int(args[2]));
 }
 
-private bool listTracks(string[] args)
+private void listTracks(string[] args)
 {
 	writeln("\nIndex\tTrack Name");
 	writeln("-----\t--------\n");
 	foreach(index, trackName; binaryFile.getTrackList()){
 		writefln("%d\t%s", index, trackName);
 	}
-	return true;
 }
 
 private void displayTrack(int index, int variation)
 {
-	try
-	{
-		selectedObject = binaryFile.getTrack(index, variation);
-	}
-	catch (Exception e)
-	{
-		writeln(e.msg);
-		return;
-	}
+	selectedObject = binaryFile.getTrack(index, variation);
+
 	selectedObject.setupDrawing(gl);
 	setWindowVisible(true);
 	writefln("\nDisplaying track #%d variation %d", index, variation);
 	writeln("Press Escape to return to command window");
 }
 
-private bool extractTrackBinary(string[] args)
+private void extractTrackBinary(string[] args)
 {
-	try
-	{
-		int trackIndex = parse!int(args[1]);
-		binaryFile.dumpTrackData(trackIndex);
-	}
-	catch (ConvException e)
-	{
-		writeln(e.msg);
-		return false;
-	}
-	return true;
+	int trackIndex = parse!int(args[1]);
+	binaryFile.dumpTrackData(trackIndex);
 }
 
-private bool extractZlibBlock(string[] args)
+private void extractZlibBlock(string[] args)
 {
-	try
-	{
-		bool hexPrefix = indexOf(args[1], "0x") == 0;
-		string offset = chompPrefix(args[1], "0x");
-		int dataOffset = hexPrefix ? parse!int(offset, 16) : parse!int(offset);
+	bool hexPrefix = indexOf(args[1], "0x") == 0;
+	string offset = chompPrefix(args[1], "0x");
+	int dataOffset = hexPrefix ? parse!int(offset, 16) : parse!int(offset);
 
-		string workingDir = getcwd();
-		string outputDir = workingDir ~ "\\output";
-		chdir(outputDir);
-		ubyte[] output = binaryFile.decompressZlibBlock(dataOffset);
-		std.file.write(format("Data_%.8x", dataOffset), output);
-		writefln("Data from %d extracted to %s", dataOffset, outputDir);
-		chdir(workingDir);
-	}
-	catch (Exception e)
-	{
-		writeln(e.msg);
-		return false;
-	}
-	return true;
+	string workingDir = getcwd();
+	string outputDir = workingDir ~ "\\output";
+	chdir(outputDir);
+	ubyte[] output = binaryFile.decompressZlibBlock(dataOffset);
+	std.file.write(format("Data_%.8x", dataOffset), output);
+	writefln("Data from %d extracted to %s", dataOffset, outputDir);
+	chdir(workingDir);
 }
 
-private bool writeHelp(string[] args)
+private void writeHelp(string[] args)
 {
 	writeln("\nAvailable commands:");
 	foreach(cmd; commands)
@@ -416,7 +367,6 @@ private bool writeHelp(string[] args)
 		writefln("\t%s\t%s\t\t%s", cmd.shortCommand, cmd.longCommand, cmd.description);
 	}
 	writeln();
-	return true;
 }
 
 private void setupCommands()
@@ -425,37 +375,19 @@ private void setupCommands()
 	commands ~= UserCommand("lt", "--list-tracks", "List track names and indices", "lt", &listTracks);
 	commands ~= UserCommand("dc", "--display-car", "Display car {index}", "dc {index}",
 		(string[] args) {
-			if (args.length == 2)
+			if (args.length != 2)
 			{
-				try
-				{
-					displayCar(parse!int(args[1]));
-				}
-				catch (ConvException e)
-				{
-					writeln(e.msg);
-					return false;
-				}
-				return true;
+				throw new Exception("Wrong arg number");
 			}
-			return false;
+			displayCar(parse!int(args[1]));
 		});
 	commands ~= UserCommand("dt", "--display-track", "Display track {index} {variation}", "dt {index} {variation}",
 		(string[] args) {
-			if (args.length == 3)
+			if (args.length != 3)
 			{
-				try
-				{
-					displayTrack(parse!int(args[1]), parse!int(args[2]));
-				}
-				catch (ConvException e)
-				{
-					writeln(e.msg);
-					return false;
-				}
-				return true;
+				throw new Exception("Wrong arg number");
 			}
-			return false;
+			displayTrack(parse!int(args[1]), parse!int(args[2]));
 		});
 	commands ~= UserCommand("e", "--extract", "Extract and inflate zlib data from ROM {offset}", "", &extractZlibBlock);
 	commands ~= UserCommand("ecb", "--extract-car-binary", "Extract car {index} binary data", "", &extractCarBinary);
@@ -463,5 +395,5 @@ private void setupCommands()
 	commands ~= UserCommand("ico", "--import-car-obj", "Import car from Wavefront Obj file", "ico {path/to/file.obj} {Car number to replace}", &importCarObj);
 	commands ~= UserCommand("etb", "--extract-track", "Extract track {index} {variation} binary data", "", &extractTrackBinary);
 	commands ~= UserCommand("h", "--help", "Display all available commands", "", &writeHelp);
-	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); return true; });
+	commands ~= UserCommand("v", "--version", "Version information", "", (string[] args) { writeln(RELEASE_VERSION); });
 }

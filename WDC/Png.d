@@ -159,7 +159,7 @@ static class Png
 		}
 		else
 		{
-			writeln("Warning: Failed to find file ", getcwd() ~ "\\" ~ filePath);
+			writeln("Warning: Failed to find file ", filePath);
 		}
 		
 		return tuple(texture, palette);
