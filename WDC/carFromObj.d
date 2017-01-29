@@ -38,9 +38,14 @@ static class CarFromObj
 			}
 			ushort convertNormalPointer(string indexString)
 			{
-				uint normalIndex = parse!uint(indexString);
-				return cast(ushort)((normalIndex - totalNormalCount - 1) +
-					(car.models[model].normals.length - sectionNormalCount));
+				if (indexString != "")
+				{
+					uint normalIndex = parse!uint(indexString);
+					return cast(ushort)((normalIndex - totalNormalCount - 1) +
+						(car.models[model].normals.length - sectionNormalCount));
+				}
+				return 0;
+
 			}
 			string[] point1, point2, point3, point4;
 			foreach (face; faces)
@@ -209,17 +214,20 @@ static class CarFromObj
 				lineParts = split(line, " ");
 				int materialIndex = parse!int(lineParts[1]);
 				car.modelToTextureMap[modelSection] = materialIndex;
-				car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
+				if (materialPaths[materialIndex] != "")
+				{
+					car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
 
-				string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
-				car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
-				                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
-				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+					string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
+					car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+					                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
+					                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 
-				altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set2" ~ materialPaths[materialIndex][$-16..$];
-				car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
-				                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
-				                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+					altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set2" ~ materialPaths[materialIndex][$-16..$];
+					car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+					                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
+					                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+				}
 			}
 		}
 		facesToPolygons(isLoD(modelSection));
@@ -376,7 +384,7 @@ static class CarFromObj
 			if (line.startsWith("map_Kd "))
 			{
 				lineParts = split(line, "map_Kd ");
-				texturePaths[textureNum] = path ~ chomp(lineParts[$ - 1]);
+				texturePaths[textureNum] = path ~ chomp(lineParts[1]);
 			}
 		}
 		input.close();

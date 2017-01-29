@@ -7,6 +7,7 @@ static class CarToObj
 	static void convert(Car car, string destinationFolder)
 	{
 		import std.conv;
+		import std.algorithm.searching : countUntil;
 		
 		if (!exists(destinationFolder) || !(destinationFolder.isDir))
 		{
@@ -36,24 +37,39 @@ static class CarToObj
 
 		bool hasNormals;
 		bool hasFourVerts = false;
+		int vertexTotal = 8, normalTotal = 0, uvTotal = 0;
+		vec3s[] vertexCache;
+		vec3b[] normalCache;
+		vec2b[] uvCache;
+		int[4] objVertexIndices;
+		int[4] objNormalIndices;
+		int[4] objUvIndices;
 		foreach (modelIndex, model; car.models)
 		{
 			foreach (sectionIndex, section; model.modelSections)
 			{
 				if (modelIndex == 0)
 				{
-					output.writeln("usemtl ", car.modelToTextureMap[sectionIndex]);
+					
 					output.writefln("o %.2d-%.2d-%s", modelIndex, sectionIndex, Car.partNames[sectionIndex]);
+					output.writeln("usemtl ", car.modelToTextureMap[sectionIndex]);
 				}
 				else
 				{
-					output.writeln("usemtl ", 14);
+					
 					output.writefln("o %.2d-%.2d", modelIndex, sectionIndex);
+					output.writeln("usemtl ", 14);
 				}
+				vertexTotal += vertexCache.length;
+				normalTotal += normalCache.length;
+				uvTotal += uvCache.length;
+				vertexCache.length = 0;
+				normalCache.length = 0;
+				uvCache.length = 0;
 				hasNormals = model.normals.length > 0;
 				foreach (polygon; section.polygons)
 				{
-					foreach (polygonIndex; polygon.vertexIndices)
+					foreach (pi, polygonIndex; polygon.vertexIndices)
 					{
 						if (polygonIndex == 0xFFFF) // will always be the last index
 						{
@@ -61,39 +77,71 @@ static class CarToObj
 							continue;
 						}
 						vec3s vertex = model.vertices[polygonIndex];
-						output.writeln("v ", vertex.x / 256.0, " ",
-						                     vertex.y / 256.0, " ",
-						                     vertex.z / 256.0);
+						if (countUntil(vertexCache, vertex) == -1)
+						{
+							output.writeln("v ", vertex.x / 256.0, " ",
+							                     vertex.y / 256.0, " ",
+							                     vertex.z / 256.0);
+							vertexCache ~= vertex;
+							objVertexIndices[pi] = vertexCache.length;
+						}
+						else
+						{
+							objVertexIndices[pi] = countUntil(vertexCache, vertex) + 1;
+						}
+						
 						hasFourVerts = true;
 					}
 					if (hasNormals)
 					{
-						foreach (normalIndex; polygon.normalIndices)
+						foreach (ni, normalIndex; polygon.normalIndices)
 						{
 							vec3b normal = model.normals[normalIndex];
-							output.writeln("vn ", normal.x / 127.0, " ",
-							                      normal.y / 127.0, " ",
-							                      normal.z / 127.0);
+							if (countUntil(normalCache, normal) == -1)
+							{
+								output.writeln("vn ", normal.x / 127.0, " ",
+								                      normal.y / 127.0, " ",
+								                      normal.z / 127.0);
+								normalCache ~= normal;
+								objNormalIndices[ni] = normalCache.length;
+							}
+							else
+							{
+								objNormalIndices[ni] = countUntil(normalCache, normal) + 1;
+							}
+							
 						}
 					}
-					foreach (uv; polygon.textureCoordinates)
+					foreach (uvi, uv; polygon.textureCoordinates)
 					{
-						output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
+						if (countUntil(uvCache, uv) == -1)
+						{
+							output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
+							uvCache ~= uv;
+							objUvIndices[uvi] = uvCache.length;
+						}
+						else
+						{
+							objUvIndices[uvi] = countUntil(uvCache, uv) + 1;
+						}
+						
 					}
-					output.write("f ", hasFourVerts ? "-4" : "-3",
-						               "/-4/",
-					                   hasNormals ? "-4" : "", " ",
+					output.write("f ", objVertexIndices[0] + vertexTotal, "/",
+						               objUvIndices[0] + uvTotal, "/",
+					                   hasNormals ? to!string(objNormalIndices[0] + normalTotal) : "", " ",
 
-					                   hasFourVerts ? "-3" : "-2",
-					                   "/-3/",
-					                   hasNormals ? "-3" : "", " ",
+					                   objVertexIndices[1] + vertexTotal, "/",
+					                   objUvIndices[1] + uvTotal, "/",
+					                   hasNormals ? to!string(objNormalIndices[1] + normalTotal) : "", " ",
 
-					                   hasFourVerts ? "-2" : "-1",
-					                   "/-2/",
-					                   hasNormals ? "-2" : "");
+					                   objVertexIndices[2] + vertexTotal, "/",
+					                   objUvIndices[2] + uvTotal, "/",
+					                   hasNormals ? to!string(objNormalIndices[2] + normalTotal) : "");
 					if (hasFourVerts)
 					{
-						output.write(" -1/-1/", hasNormals ? "-1" : "");
+						output.write(" ", objVertexIndices[3] + vertexTotal, "/",
+						                  objUvIndices[3] + uvTotal, "/",
+						                  hasNormals ? to!string(objNormalIndices[3] + normalTotal) : "");
 					}
 					output.writeln("");
 				}
@@ -111,22 +159,26 @@ static class CarToObj
 		
 		File materialLibrary = File(destinationFolder ~ "car.mtl", "w");
 		Car.Colour[] palette;
+		string fileName;
+		int previousTextureIndex = -1;
 
 		void writeTexture(ubyte[] textureBytes, int textureNum, int modelNum, int forceLitPalette)
 		{
 			uint paletteIndex = Car.MODEL_TO_PALETTE[modelNum] + forceLitPalette;
-			string fileName = modelNum > 29
-			                  ? format("set%d_wheel_%d.png", paletteSet, modelNum - 30)
-			                  : format("set%d_tex%.2d_pal%.2d.png", paletteSet, textureNum, paletteIndex);
-
-			materialLibrary.writeln("newmtl ", textureNum);
-			materialLibrary.writeln("illum 1");
-			materialLibrary.writeln("map_Kd " ~ fileName);
+			fileName = modelNum > 29
+			           ? format("set%d_wheel_%d.png", paletteSet, modelNum - 30)
+			           : format("set%d_tex%.2d_pal%.2d.png", paletteSet, textureNum, paletteIndex);
 			
 			File textureFile = File(destinationFolder ~ fileName, "wb");
 			palette = car.paletteSets[paletteSet][paletteIndex];
 			textureFile.rawWrite(Png.wdcTextureToPng(palette, textureBytes, TEXTURE_WIDTH, TEXTURE_HEIGHT));
 			textureFile.close();
+		}
+		void writeMtl(int textureNum)
+		{
+			materialLibrary.writeln("newmtl ", textureNum);
+			materialLibrary.writeln("illum 1");
+			materialLibrary.writeln("map_Kd " ~ fileName);
 		}
 
 		int wheelNum = 0;
@@ -145,6 +197,11 @@ static class CarToObj
 					if (modelIndex == 19 || modelIndex == 21)
 					{
 						writeTexture(texture, textureIndex, modelIndex, 1);
+					}
+					if (textureIndex != previousTextureIndex)
+					{
+						writeMtl(textureIndex);
+						previousTextureIndex = textureIndex;
 					}
 				}
 			}
