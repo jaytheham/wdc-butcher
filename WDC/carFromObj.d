@@ -94,7 +94,7 @@ static class CarFromObj
 			
 			if (line.startsWith("o "))
 			{
-				if (model != 0xFFFF)
+				if (model < 2)
 				{
 					facesToPolygons(isLoD(modelSection));
 				}
