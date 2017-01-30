@@ -209,7 +209,10 @@ static class CarToObj
 					}
 					if (textureIndex != previousTextureIndex)
 					{
-						writeMtl(textureIndex);
+						if (modelIndex < 30)
+						{
+							writeMtl(textureIndex);
+						}
 						previousTextureIndex = textureIndex;
 					}
 				}
