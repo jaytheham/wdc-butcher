@@ -59,7 +59,7 @@ static class CarToObj
 				else
 				{
 					output.writefln("o %.2d-%.2d", modelIndex, sectionIndex);
-					output.writeln("usemtl ", 14);
+					output.writeln("usemtl ", modelIndex == 1 ? car.modelToTextureMap[18] : 14);
 				}
 				vertexTotal += vertexCache.length;
 				normalTotal += normalCache.length;
