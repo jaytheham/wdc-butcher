@@ -53,7 +53,7 @@ static class CarToObj
 				}
 				if (modelIndex == 0)
 				{
-					output.writefln("o %.2d-%.2d-%s", modelIndex, sectionIndex, Car.partNames[sectionIndex]);
+					output.writefln("o %.2d-%.2d-%s", modelIndex, sectionIndex, cast(Car.PartNames)sectionIndex);
 					output.writeln("usemtl ", car.modelToTextureMap[sectionIndex]);
 				}
 				else
@@ -201,12 +201,7 @@ static class CarToObj
 			{
 				if (mapTextureIndex == textureIndex)
 				{
-					// TODO: some cars have a third palette for the rear lights when reversing?
 					writeTexture(texture, textureIndex, modelIndex > 29 ? 30 + wheelNum++ : modelIndex, 0);
-					if (modelIndex == 19 || modelIndex == 21)
-					{
-						writeTexture(texture, textureIndex, modelIndex, 1);
-					}
 					if (textureIndex != previousTextureIndex)
 					{
 						if (modelIndex < 30)
@@ -214,6 +209,10 @@ static class CarToObj
 							writeMtl(textureIndex);
 						}
 						previousTextureIndex = textureIndex;
+					}
+					if (modelIndex == 19 || modelIndex == 21)
+					{
+						writeTexture(texture, textureIndex, modelIndex, 1);
 					}
 				}
 			}

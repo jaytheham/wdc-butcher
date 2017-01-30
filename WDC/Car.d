@@ -24,13 +24,13 @@ class Car : Drawable
 		const static ubyte[] MODEL_TO_PALETTE = [0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,1,
 		                                         0,1,2,4,4,6,6,1,1,0,3,3,3,2,2,2,
 		                                         2,2,2,2,2,2,2,2,2,2,2];
-		                                         // cheat by saying second light of each pair uses lit palette
-		const static string[] partNames = [
-			"grill",		"bonnet_l",		"bonnet_r",		"windscreen_f",		"roof",			"windscreen_b",
-			"trunk",		"back",			"wheel_well_fl","wheel_well_fr",	"wheel_well_bl","wheel_well_br",
-			"door_l",		"door_r",		"windows_l",	"windows_r",		"spoiler",		"undercarriage",
-			"fake_wheels",	"headlight_l",	"headlight_r",	"taillight_l",		"taillight_r",	"wingmirror_l",
-			"wingmirror_r", "roof_ornament","LoD1",			"LoD2",				"LoD3"];
+		enum PartNames {
+			grill,         bonnet_l,      bonnet_r,      windscreen_f,  roof,
+			windscreen_b,  trunk,         back,          wheel_well_fl, wheel_well_fr,
+			wheel_well_bl, wheel_well_br, door_l,        door_r,        windows_l,
+			windows_r,     spoiler,       undercarriage, fake_wheels,   headlight_l,
+			headlight_r,   taillight_l,   taillight_r,   wingmirror_l,  wingmirror_r,
+			roof_ornament, LoD1,          LoD2,          LoD3};
 		// cars 23, 24, 25, 26, 27, 30, 31, 32 have a roof ornament
 		// cars 9, 10, 11, 20, 21, 22 have fake wheels
 		// 30, 31, 32 have no under carriage

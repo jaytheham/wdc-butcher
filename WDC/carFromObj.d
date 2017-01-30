@@ -239,7 +239,7 @@ static class CarFromObj
 		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
 		//TODO check all this hardcoded shit is accurate
-		car.modelToTextureMap[18] = 14; // static wheel, 18 is usually empty
+		car.modelToTextureMap[Car.PartNames.fake_wheels] = 14;
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[0];
@@ -254,6 +254,19 @@ static class CarFromObj
 		car.paletteSets[1][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set1_wheel_0.png")[1];
 		car.paletteSets[2][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set2_wheel_0.png")[1];
 
+		string headlightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+		headlightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+		headlightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+
+		string taillightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
+		car.paletteSets[0][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
+		taillightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
+		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
+		taillightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
+		car.paletteSets[2][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
 		car.generateBinaries();
