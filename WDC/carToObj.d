@@ -36,27 +36,28 @@ static class CarToObj
 		output.writeln("l 5 6 7 8 5");
 
 		bool hasNormals;
-		bool hasFourVerts = false;
 		int vertexTotal = 8, normalTotal = 0, uvTotal = 0;
 		vec3s[] vertexCache;
 		vec3b[] normalCache;
 		vec2b[] uvCache;
-		int[4] objVertexIndices;
-		int[4] objNormalIndices;
-		int[4] objUvIndices;
+		int[ushort] sectionVertexIndices;
+		int[ushort] sectionNormalIndices;
+		int[int] sectionUvIndices;
 		foreach (modelIndex, model; car.models)
 		{
 			foreach (sectionIndex, section; model.modelSections)
 			{
+				if (section.polygons.length == 0)
+				{
+					continue;
+				}
 				if (modelIndex == 0)
 				{
-					
 					output.writefln("o %.2d-%.2d-%s", modelIndex, sectionIndex, Car.partNames[sectionIndex]);
 					output.writeln("usemtl ", car.modelToTextureMap[sectionIndex]);
 				}
 				else
 				{
-					
 					output.writefln("o %.2d-%.2d", modelIndex, sectionIndex);
 					output.writeln("usemtl ", 14);
 				}
@@ -67,81 +68,89 @@ static class CarToObj
 				normalCache.length = 0;
 				uvCache.length = 0;
 				hasNormals = model.normals.length > 0;
-				foreach (polygon; section.polygons)
+				foreach (pi, polygon; section.polygons)
 				{
-					foreach (pi, polygonIndex; polygon.vertexIndices)
+					foreach (vertexIndex; polygon.vertexIndices)
 					{
-						if (polygonIndex == 0xFFFF) // will always be the last index
+						if (vertexIndex == 0xFFFF) // will always be the last index
 						{
-							hasFourVerts = false;
-							continue;
+							break;
 						}
-						vec3s vertex = model.vertices[polygonIndex];
+						vec3s vertex = model.vertices[vertexIndex];
 						if (countUntil(vertexCache, vertex) == -1)
 						{
-							output.writeln("v ", vertex.x / 256.0, " ",
-							                     vertex.y / 256.0, " ",
-							                     vertex.z / 256.0);
 							vertexCache ~= vertex;
-							objVertexIndices[pi] = vertexCache.length;
+							sectionVertexIndices[vertexIndex] = vertexCache.length;
 						}
 						else
 						{
-							objVertexIndices[pi] = countUntil(vertexCache, vertex) + 1;
-						}
-						
-						hasFourVerts = true;
-					}
-					if (hasNormals)
-					{
-						foreach (ni, normalIndex; polygon.normalIndices)
-						{
-							vec3b normal = model.normals[normalIndex];
-							if (countUntil(normalCache, normal) == -1)
-							{
-								output.writeln("vn ", normal.x / 127.0, " ",
-								                      normal.y / 127.0, " ",
-								                      normal.z / 127.0);
-								normalCache ~= normal;
-								objNormalIndices[ni] = normalCache.length;
-							}
-							else
-							{
-								objNormalIndices[ni] = countUntil(normalCache, normal) + 1;
-							}
-							
+							sectionVertexIndices[vertexIndex] = countUntil(vertexCache, vertex) + 1;
 						}
 					}
 					foreach (uvi, uv; polygon.textureCoordinates)
 					{
 						if (countUntil(uvCache, uv) == -1)
 						{
-							output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
 							uvCache ~= uv;
-							objUvIndices[uvi] = uvCache.length;
+							sectionUvIndices[(pi * 4) + uvi] = uvCache.length;
 						}
 						else
 						{
-							objUvIndices[uvi] = countUntil(uvCache, uv) + 1;
+							sectionUvIndices[(pi * 4) + uvi] = countUntil(uvCache, uv) + 1;
 						}
-						
 					}
-					output.write("f ", objVertexIndices[0] + vertexTotal, "/",
-						               objUvIndices[0] + uvTotal, "/",
-					                   hasNormals ? to!string(objNormalIndices[0] + normalTotal) : "", " ",
-
-					                   objVertexIndices[1] + vertexTotal, "/",
-					                   objUvIndices[1] + uvTotal, "/",
-					                   hasNormals ? to!string(objNormalIndices[1] + normalTotal) : "", " ",
-
-					                   objVertexIndices[2] + vertexTotal, "/",
-					                   objUvIndices[2] + uvTotal, "/",
-					                   hasNormals ? to!string(objNormalIndices[2] + normalTotal) : "");
-					if (hasFourVerts)
+					if (hasNormals)
 					{
-						output.write(" ", objVertexIndices[3] + vertexTotal, "/",
-						                  objUvIndices[3] + uvTotal, "/",
-						                  hasNormals ? to!string(objNormalIndices[3] + normalTotal) : "");
+						foreach (normalIndex; polygon.normalIndices)
+						{
+							vec3b normal = model.normals[normalIndex];
+							if (countUntil(normalCache, normal) == -1)
+							{
+								normalCache ~= normal;
+								sectionNormalIndices[normalIndex] = normalCache.length;
+							}
+							else
+							{
+								sectionNormalIndices[normalIndex] = countUntil(normalCache, normal) + 1;
+							}
+						}
+					}
+				}
+				foreach (vertex; vertexCache)
+				{
+					output.writeln("v ", vertex.x / 256.0, " ",
+					                     vertex.y / 256.0, " ",
+					                     vertex.z / 256.0);
+				}
+				foreach (uv; uvCache)
+				{
+					output.writeln("vt ", uv.x / 80.0, " ", uv.y / 38.0);
+				}
+				foreach (normal; normalCache)
+				{
+					output.writeln("vn ", normal.x / 127.0, " ",
+					                      normal.y / 127.0, " ",
+					                      normal.z / 127.0);
+				}
+				foreach (pi, polygon; section.polygons)
+				{
+					output.write("f ", sectionVertexIndices[polygon.vertexIndices[0]] + vertexTotal, "/",
+						               sectionUvIndices[(pi * 4) + 0] + uvTotal, "/",
+					                   hasNormals ? to!string(sectionNormalIndices[polygon.normalIndices[0]] + normalTotal) : "", " ",
+
+					                   sectionVertexIndices[polygon.vertexIndices[1]] + vertexTotal, "/",
+						               sectionUvIndices[(pi * 4) + 1] + uvTotal, "/",
+					                   hasNormals ? to!string(sectionNormalIndices[polygon.normalIndices[1]] + normalTotal) : "", " ",
+
+					                   sectionVertexIndices[polygon.vertexIndices[2]] + vertexTotal, "/",
+						               sectionUvIndices[(pi * 4) + 2] + uvTotal, "/",
+					                   hasNormals ? to!string(sectionNormalIndices[polygon.normalIndices[2]] + normalTotal) : "");
+
+					if (polygon.vertexIndices[3] != 0xFFFF)
+					{
+						output.write(" ", sectionVertexIndices[polygon.vertexIndices[3]] + vertexTotal, "/",
+						               sectionUvIndices[(pi * 4) + 3] + uvTotal, "/",
+					                   hasNormals ? to!string(sectionNormalIndices[polygon.normalIndices[3]] + normalTotal) : "");
 					}
 					output.writeln("");
 				}
