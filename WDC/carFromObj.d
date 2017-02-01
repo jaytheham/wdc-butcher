@@ -209,24 +209,30 @@ static class CarFromObj
 					}
 				}
 			}
-			else if (line.startsWith("usemtl ") && model == 0)
+			else if (line.startsWith("usemtl "))
 			{
 				lineParts = split(line, " ");
 				int materialIndex = parse!int(lineParts[1]);
-				car.modelToTextureMap[modelSection] = materialIndex;
-				if (materialPaths[materialIndex] != "")
+				if (model == 0)
 				{
-					car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
+					car.modelToTextureMap[modelSection] = materialIndex;
+					if (materialPaths[materialIndex] != "")
+					{
+						car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
 
-					string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
-					car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
-					                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
-					                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+						string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
+						car.paletteSets[1][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+						                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
+						                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
 
-					altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set2" ~ materialPaths[materialIndex][$-16..$];
-					car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
-					                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
-					                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+						altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set2" ~ materialPaths[materialIndex][$-16..$];
+						car.paletteSets[2][Car.MODEL_TO_PALETTE[modelSection]] = exists(altPaletteTexturePath)
+						                                                       ? Png.pngToWdcTexture(altPaletteTexturePath)[1]
+						                                                       : car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]];
+					}
+				} else if (model == 1)
+				{
+					car.modelToTextureMap[Car.PartNames.fake_wheels] = materialIndex;
 				}
 			}
 		}
@@ -239,7 +245,6 @@ static class CarFromObj
 		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
 		//TODO check all this hardcoded shit is accurate
-		car.modelToTextureMap[Car.PartNames.fake_wheels] = 14;
 		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
 		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[0];
