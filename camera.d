@@ -34,6 +34,7 @@ class Camera
 
 	public void update(SDL2 sdl2, float deltaT)
 	{
+		static import gfm.math.vector;
 		int deltaX = (sdl2.mouse.lastDeltaX() >= -2 && sdl2.mouse.lastDeltaX() <= 2) ? 0 : sdl2.mouse.lastDeltaX();
 		int deltaY = (sdl2.mouse.lastDeltaY() >= -2 && sdl2.mouse.lastDeltaY() <= 2) ? 0 : sdl2.mouse.lastDeltaY();
 		hRadians += mouseSpeed * deltaT * -deltaX;
