@@ -16,7 +16,7 @@ static class CarFromBinaries
 		car.paletteBinaries[2] = palettesC;
 
 		car.unknown1 = binary.readFloat(0x8);
-		car.carCameraYOffset = binary.readFloat(0xC);
+		car.inCarCameraYOffset = binary.readFloat(0xC);
 		car.wheelOrigins = [vec3f(binary.readFloat(0x18), binary.readFloat(0x1C), binary.readFloat(0x14)),
 		                    vec3f(binary.readFloat(0x24), binary.readFloat(0x28), binary.readFloat(0x20)),
 		                    vec3f(binary.readFloat(0x30), binary.readFloat(0x34), binary.readFloat(0x2C)),
@@ -53,9 +53,9 @@ static class CarFromBinaries
 		car.modelToTextureMap.length = modelToTextureCount;
 		car.textures.length = textureDescriptorCount;
 
-		foreach(index; 0..textureDescriptorCount)
+		foreach(tIndex; 0..textureDescriptorCount)
 		{
-			descriptorPointer = binary.readInt(textureDescriptorPointers + (index * 4));
+			descriptorPointer = binary.readInt(textureDescriptorPointers + (tIndex * 4));
 			actualTextureSize = textureDescriptorSize = (((binary.readInt(descriptorPointer + 0x14) >> 12) & 0xFFF) + 1) << 1;
 			if (textureDescriptorSize < Car.TEXTURE_SIZE_BYTES)
 			{
@@ -63,17 +63,17 @@ static class CarFromBinaries
 				nextDestination = binary.readInt(descriptorPointer + 0x20 + 4);
 				actualTextureSize = nextDestination - destination;
 			}
-			car.textures[index] = binaryTextures[sourcePosition..sourcePosition + actualTextureSize];
+			car.textures[tIndex] = binaryTextures[sourcePosition..sourcePosition + actualTextureSize];
 			if (actualTextureSize == Car.TEXTURE_SIZE_BYTES)
 			{
-				wordSwapOddRows(car.textures[index], Car.TEXTURE_WIDTH_BYTES, Car.TEXTURE_HEIGHT_BYTES);
+				wordSwapOddRows(car.textures[tIndex], Car.TEXTURE_WIDTH_BYTES, Car.TEXTURE_HEIGHT_BYTES);
 			}
 			sourcePosition += textureDescriptorSize;
 			foreach(mIndex; 0..modelToTextureCount)
 			{
 				if (binary.readInt(modelToTexturePointers + (mIndex * 4)) == descriptorPointer)
 				{
-					car.modelToTextureMap[mIndex] = index;
+					car.modelToTextureMap[mIndex] = tIndex;
 				}
 			}
 		}

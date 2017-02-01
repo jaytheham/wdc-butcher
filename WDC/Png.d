@@ -48,7 +48,7 @@ static class Png
 		}
 		idat ~= compress(idatData);
 		uint idatDataSize = idat.length - 8;
-		assert(idatDataSize <= 0xFFFF, "PNG too big for me buas");
+		enforce(idatDataSize <= 0xFFFF, "PNG too big for me buas");
 		idat[2] = (idatDataSize >> 8) & 0xFF;
 		idat[3] = idatDataSize & 0xFF;
 		idat ~= getCrc(idat[4..$]);
@@ -65,7 +65,7 @@ static class Png
 		return result;
 	}
 
-	public static Tuple!(ubyte[],Car.Colour[]) pngToWdcTexture(string filePath)
+	public static Tuple!(ubyte[], Car.Colour[]) pngToWdcTexture(string filePath)
 	{
 		import std.string, std.bitmanip, std.file, std.algorithm : min;
 		enum uint CHUNK_LENGTH_TYPE_CRC = 12;

@@ -42,7 +42,7 @@ class Car : Drawable
 		ubyte[][3] paletteBinaries;
 
 		float unknown1 = 0.5;
-		float carCameraYOffset = 0.6;
+		float inCarCameraYOffset = 0.6;
 		// Both these are Z X Y in the binaries
 		// but the vec3fs are kept X Y Z
 		// Wheels are in order: front L, front R, rear L, rear R
@@ -145,7 +145,7 @@ class Car : Drawable
 		enum FIXED_DATA_END = 0x398;
 		modelsBinary = [0,0,3,0x94, 0,0,0,0];
 		modelsBinary ~= nativeToBigEndian(unknown1);
-		modelsBinary ~= nativeToBigEndian(carCameraYOffset);
+		modelsBinary ~= nativeToBigEndian(inCarCameraYOffset);
 		modelsBinary ~= [0,0,0,0];
 
 		foreach(wheel; wheelOrigins)
