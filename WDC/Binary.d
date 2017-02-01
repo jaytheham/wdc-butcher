@@ -115,6 +115,7 @@ public:
 
 	void insertCar(Car car, int carIndex)
 	{
+		import std.algorithm.comparison : max;
 		uint oldSize = carAssets[carIndex].textureZlibEnd - carAssets[carIndex].modelZlib;
 		oldSize += oldSize % 4 != 0 ? 4 - (oldSize % 4) : 0;
 		uint paddedNewModelSize = car.modelsZlib.length + (car.modelsZlib.length % 4 != 0 ? 4 - (car.modelsZlib.length % 4) : 0);
@@ -133,29 +134,39 @@ public:
 
 		if (move < 0)
 		{
-			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
-			binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
-			foreach (asset; carAssets[carIndex + 1..$])
+			binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlib + car.modelsZlib.length] = car.modelsZlib;
+			binary[carAssets[carIndex].modelZlib + paddedNewModelSize..carAssets[carIndex].modelZlib + newSize] = car.texturesZlib;
+			foreach (ref asset; carAssets[carIndex + 1..$])
 			{
 				if (asset.modelZlib >= MY_INSERT_ZONE)
 				{
-					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = binary[asset.modelZlib..asset.textureZlibEnd];
+					ubyte[] temp = binary[asset.modelZlib..asset.textureZlibEnd].dup;
+					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = temp;
+					asset.modelZlib += move;
+					asset.modelZlibEnd += move;
+					asset.textureZlib += move;
+					asset.textureZlibEnd += move;
 				}
 			}
 		}
 		else if (move > 0)
 		{
-			foreach_reverse (asset; carAssets[carIndex + 1..$])
+			foreach_reverse (ref asset; carAssets[carIndex + 1..$])
 			{
 				if (asset.modelZlib >= MY_INSERT_ZONE)
 				{
-					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = binary[asset.modelZlib..asset.textureZlibEnd];
+					ubyte[] temp = binary[asset.modelZlib..asset.textureZlibEnd].dup;
+					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = temp;
+					asset.modelZlib += move;
+					asset.modelZlibEnd += move;
+					asset.textureZlib += move;
+					asset.textureZlibEnd += move;
 				}
 			}
 			uint highestEnd = 0;
 			foreach (asset; carAssets[0..carIndex])
 			{
-				highestEnd = asset.textureZlibEnd > highestEnd ? asset.textureZlibEnd : 0;
+				highestEnd = max(asset.textureZlibEnd, highestEnd);
 			}
 			if (highestEnd < MY_INSERT_ZONE)
 			{
@@ -164,14 +175,14 @@ public:
 			highestEnd += highestEnd % 4 != 0 ? 4 - (highestEnd % 4) : 0;
 			carAssets[carIndex].modelZlib = highestEnd;
 			carAssets[carIndex].modelZlibEnd = highestEnd + car.modelsZlib.length;
-			carAssets[carIndex].textureZlib = highestEnd + car.modelsZlib.length;
-			carAssets[carIndex].textureZlib += carAssets[carIndex].textureZlib % 4 != 0 ? 4 - (carAssets[carIndex].textureZlib % 4) : 0;
+			carAssets[carIndex].textureZlib = highestEnd + paddedNewModelSize;
 			carAssets[carIndex].textureZlibEnd = carAssets[carIndex].textureZlib + car.texturesZlib.length;
 		}
 		if (binary.length < carAssets[carIndex].textureZlibEnd)
 		{
 			binary ~= new ubyte[carAssets[carIndex].textureZlibEnd - binary.length];
 		}
+		// TODO, what if the highest model is not the current one, and it has been moved up? outside binary length
 		binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
 		binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
 		binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
