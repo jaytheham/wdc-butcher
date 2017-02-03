@@ -58,6 +58,7 @@ class Car : Drawable
 		Colour[COLOURS_PER_PALETTE][PALETTES_PER_SET][3] paletteSets;
 		int[PALETTES_PER_SET] insertedPaletteIndices;
 		Model[10] models;
+		float[40] settings;
 	
 		union Colour
 		{
@@ -87,8 +88,53 @@ class Car : Drawable
 			vec2b[4] textureCoordinates;
 			ushort[4] normalIndices;
 		}
+
+		enum Settings
+		{
+			unk1, // offset of front wheels forwards ? first four are used in races, not in car select screen
+			unk2, // offset of rear wheels back ?
+			unk3,	// offset of front wheels to the sides
+			unk4, // offset of rear wheels to the sides
+			unk5, // vertical offset front wheels
+			unk6, // vertical offset rear wheels
+			unk7, // front wheel suspension ???
+			unk8,
+			unk9, // rear wheel suspension ???
+			unk10, // set to 1~ rear of car is very very bouncy
+			kilograms,
+			unk12, // 1~ crashed emulator, 100_000~ makes car rock side to side veeeeery slowly
+			unk13,
+			unk14, // very high number car turns veeeery slowly / drifts sideways more than turns
+			unk15, // horsepower / acceleration
+			unk16, // affects acceleration somehow
+			unk17, // higher number won't go above second gear
+			unk18, // higher value car spins out at speed, less traction overall??
+			unk19, // higher value: at speed car won't turn, front lifts up at speed
+			unk20, // higher value: car spins out at speed
+			unk21, // higher value: hard to correct slide at high speed?
+			unk22,
+			unk23,
+			unk24, // High value: won't go up gear, very slow top speed & acceleration
+			unk25, // High value: changes back to first gear from second immediately
+			unk26, // High value: changes to first gear immediately upon changing to third
+			unk27,
+			unk28,
+			unk29,
+			unk30, // 24 - 30 Gear ratios? (0 for unavailable gear?)
+			unk31, // High value: won't go up gear, very slow top speed & acceleration
+			unk32, // low value: won't change into reverse while moving forwards at any speed
+			unk33,
+			unk34,
+			unk35,
+			unk36,
+			unk37,
+			unk38, // High value: the car kinda fights back against turning
+			unk39,
+			unk40 // High value speedo needle goes crazy when braking
+		}
 	}
 
+	// TODO: Remove repeated normals also ?
 	private void removeRepeatedVertices()
 	{
 		foreach (ref model; models)
@@ -369,12 +415,8 @@ class Car : Drawable
 
 		generatePaletteBinaries();
 
-		//std.file.write("mymodelsBinary", modelsBinary);
-		//std.file.write("myTexturesBinary", texturesBinary);
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
-		//std.file.write("mymodelsBinaryZlibBlock", modelsZlib);
-		//std.file.write("myTexturesBinaryZlibBlock", texturesZlib);
 	}
 
 	private void generatePaletteBinaries()

@@ -13,6 +13,7 @@ static class CarToObj
 		{
 			mkdir(destinationFolder);
 		}
+		outputSettings(car, destinationFolder);
 		outputTextures(car, 2, destinationFolder);
 		outputTextures(car, 1, destinationFolder);
 		outputTextures(car, 0, destinationFolder);
@@ -157,6 +158,15 @@ static class CarToObj
 			}
 		}
 		output.close();
+	}
+
+	private static void outputSettings(Car car, string destinationFolder)
+	{
+		File settingsFile = File(destinationFolder ~ "carSettings.txt", "w");
+		foreach (i, value; car.settings)
+		{
+			settingsFile.writeln(i, ",\t", cast(Car.Settings)i, ",\t", value);
+		}
 	}
 
 	private static void outputTextures(Car car, int paletteSet, string destinationFolder)

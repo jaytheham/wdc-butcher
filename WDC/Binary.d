@@ -27,6 +27,8 @@ private:
 	enum CAR_ASSETS_SIZE = 0x80;
 	enum CAR_PALETTE_SIZE = 0x20;
 	enum carInsertedPalettes = 8;
+	uint carSettingsPointer;
+	enum CAR_SETTINGS_SIZE = 0xa0;
 
 	uint trackAssetsPointer;
 	enum TRACK_ASSETS_SIZE = 0x44;
@@ -65,6 +67,7 @@ public:
 		enforceBigEndian();
 
 		carAssetsPointer = binary[0x3e] == 'E' ? 0x81c30 : 0x83620;
+		carSettingsPointer = binary[0x3e] == 'E' ? 0x918d0 : 0x0; // TODO Euro
 		loadCarAssets();
 		trackAssetsPointer = binary[0x3e] == 'E' ? 0x91550 : 0x92f40;
 
@@ -101,12 +104,14 @@ public:
 		int carAssetOffset = carAssetsPointer + (CAR_ASSETS_SIZE * carIndex);
 		int dataOffset =      peek!int(binary[carAssetOffset + 0x14..carAssetOffset + 0x18]);
 		int texturesOffset =  peek!int(binary[carAssetOffset + 0x1C..carAssetOffset + 0x20]);
+		int settingsOffset = carSettingsPointer + (CAR_SETTINGS_SIZE * carIndex);
 		int palettesAOffset = peek!int(binary[carAssetOffset + 0x24..carAssetOffset + 0x28]);
 		int palettesBOffset = peek!int(binary[carAssetOffset + 0x2C..carAssetOffset + 0x30]);
 		int palettesCOffset = peek!int(binary[carAssetOffset + 0x34..carAssetOffset + 0x38]);
 
 		return CarFromBinaries.convert(decompressZlibBlock(dataOffset),
 		               decompressZlibBlock(texturesOffset),
+		               binary[settingsOffset..settingsOffset + CAR_SETTINGS_SIZE],
 		               // assuming palettes are always 0x100 in size ...
 		               binary[palettesAOffset..palettesAOffset + (carInsertedPalettes * CAR_PALETTE_SIZE)],
 		               binary[palettesBOffset..palettesBOffset + (carInsertedPalettes * CAR_PALETTE_SIZE)],

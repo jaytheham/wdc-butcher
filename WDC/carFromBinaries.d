@@ -6,7 +6,7 @@ import std.algorithm,
 
 static class CarFromBinaries
 {
-	public static Car convert(ubyte[] binary, ubyte[] textures, ubyte[] palettesA, ubyte[] palettesB, ubyte[] palettesC)
+	public static Car convert(ubyte[] binary, ubyte[] textures, ubyte[] settings, ubyte[] palettesA, ubyte[] palettesB, ubyte[] palettesC)
 	{
 		Car car = new Car();
 		car.modelsBinary = binary;
@@ -26,6 +26,8 @@ static class CarFromBinaries
 		                    vec3f(binary.readFloat(0x60), binary.readFloat(0x64), binary.readFloat(0x5C)),
 		                    vec3f(binary.readFloat(0x6C), binary.readFloat(0x70), binary.readFloat(0x68))];
 
+		parseBinarySettings(settings, car);
+
 		parseBinaryTextures(binary, textures, car);
 
 		parseBinaryPalettes(palettesA, car.paletteSets[0]);
@@ -36,6 +38,17 @@ static class CarFromBinaries
 
 		parseBinaryModels(binary, car);
 		return car;
+	}
+
+	private static void parseBinarySettings(ubyte[] settings, Car car)
+	{
+		import std.bitmanip : read;
+		import std.stdio;
+		foreach (ref value; car.settings)
+		{
+			value = settings.read!float();
+			writeln(value);
+		}
 	}
 
 	private static void parseBinaryTextures(ubyte[] binary, ubyte[] binaryTextures, Car car)
