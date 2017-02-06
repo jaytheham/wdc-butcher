@@ -37,6 +37,7 @@ class Car : Drawable
 
 		ubyte[] modelsBinary;
 		ubyte[] modelsZlib;
+		ubyte[] settingsBinary;
 		ubyte[] texturesBinary;
 		ubyte[] texturesZlib;
 		ubyte[][3] paletteBinaries;
@@ -91,46 +92,47 @@ class Car : Drawable
 
 		enum Settings
 		{
-			unk1, // offset of front wheels forwards ? first four are used in races, not in car select screen
-			unk2, // offset of rear wheels back ?
-			unk3,	// offset of front wheels to the sides
-			unk4, // offset of rear wheels to the sides
-			unk5, // vertical offset front wheels
-			unk6, // vertical offset rear wheels
-			unk7, // front wheel suspension ???
-			unk8,
-			unk9, // rear wheel suspension ???
-			unk10, // set to 1~ rear of car is very very bouncy
+			frontWheelsForwardsBackwardsOffset, //used in races, not in car select screen
+			rearWheelsForwardsBackwardsOffset,
+			frontWheelsLeftRightOffset,
+			rearWheelsLeftRightOffset,
+			frontWheelsVerticalOffset,
+			rearWheelsVerticalOffset,
+			unknown6, // front wheel suspension ???
+			unknown7,
+			unknown8, // rear wheel suspension ???
+			unknown9, // set to 1~ rear of car is very very bouncy
 			kilograms,
-			unk12, // 1~ crashed emulator, 100_000~ makes car rock side to side veeeeery slowly
-			unk13,
-			unk14, // very high number car turns veeeery slowly / drifts sideways more than turns
-			unk15, // horsepower / acceleration
-			unk16, // affects acceleration somehow
-			unk17, // higher number won't go above second gear
-			unk18, // higher value car spins out at speed, less traction overall??
-			unk19, // higher value: at speed car won't turn, front lifts up at speed
-			unk20, // higher value: car spins out at speed
-			unk21, // higher value: hard to correct slide at high speed?
-			unk22,
-			unk23,
-			unk24, // High value: won't go up gear, very slow top speed & acceleration
-			unk25, // High value: changes back to first gear from second immediately
-			unk26, // High value: changes to first gear immediately upon changing to third
-			unk27,
-			unk28,
-			unk29,
-			unk30, // 24 - 30 Gear ratios? (0 for unavailable gear?)
-			unk31, // High value: won't go up gear, very slow top speed & acceleration
-			unk32, // low value: won't change into reverse while moving forwards at any speed
-			unk33,
-			unk34,
-			unk35,
-			unk36,
-			unk37,
-			unk38, // High value: the car kinda fights back against turning
-			unk39,
-			unk40 // High value speedo needle goes crazy when braking
+			unknown11, // 1~ crashed emulator, 100_000~ makes car rock side to side veeeeery slowly
+			unknown12, // <100 makes car very juddery at low speeds
+			unknown13, // Handling? very high number car turns veeeery slowly / drifts sideways more than turns
+				   // low number car makes very quick, sharp turns
+			acceleration,
+			unknown15, // affects acceleration somehow
+			unknown16, // higher number won't go above second gear
+			unknown17, // higher value car spins out at speed, less traction overall??
+			unknown18, // higher value: at speed car won't turn, front lifts up at speed
+			unknown19, // higher value: car spins out at speed
+			unknown20, // higher value: hard to correct slide at high speed?
+			unknown21,
+			unknown22,
+			gear1Ratio, // High value: won't go up gear, very slow top speed & acceleration
+			gear2Ratio, // High value: changes back to first gear from second immediately
+			gear3Ratio, // High value: changes to first gear immediately upon changing to third
+			gear4Ratio,
+			gear5Ratio,
+			gear6Ratio,
+			gear7Ratio, // 0 for unavailable gear
+			unknown30, // High value: won't go up gear, very slow top speed & acceleration
+			unknown31, // low value: won't change into reverse while moving forwards at any speed
+			unknown32,
+			unknown33,
+			unknown34,
+			unknown35,
+			unknown36,
+			unknown37, // High value: the car kinda fights back against turning
+			unknown38,
+			unknown39 // High value speedo needle goes crazy when braking
 		}
 	}
 
@@ -413,10 +415,19 @@ class Car : Drawable
 			}
 		}
 
+		generateSettingsBinary();
 		generatePaletteBinaries();
 
 		modelsZlib = binaryToZlibBlock(modelsBinary);
 		texturesZlib = binaryToZlibBlock(texturesBinary);
+	}
+
+	private void generateSettingsBinary()
+	{
+		foreach (i, value; settings)
+		{
+			settingsBinary[i * 4..(i * 4) + 4] = nativeToBigEndian(settings[i]);
+		}
 	}
 
 	private void generatePaletteBinaries()

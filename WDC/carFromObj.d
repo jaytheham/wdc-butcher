@@ -274,8 +274,24 @@ static class CarFromObj
 		car.paletteSets[2][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
+		parseSettings(sourcePath ~ "carSettings.txt", car);
 		car.generateBinaries();
+		writeln(car.settings[0]);
 		return car;
+	}
+
+	private static void parseSettings(string settingsFilePath, Car car)
+	{
+		File input = File(settingsFilePath, "r");
+		string line;
+		string[] lineParts;
+
+		while((line = input.readln()) !is null)
+		{
+			lineParts = split(line, ",");
+			lineParts[2] = strip(lineParts[2]);
+			car.settings[parse!int(lineParts[0])] = parse!float(lineParts[2]);
+		}
 	}
 
 	private static bool isLoD(uint sectionNumber)

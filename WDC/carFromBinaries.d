@@ -10,6 +10,7 @@ static class CarFromBinaries
 	{
 		Car car = new Car();
 		car.modelsBinary = binary;
+		car.settingsBinary = settings;
 		car.texturesBinary = textures;
 		car.paletteBinaries[0] = palettesA;
 		car.paletteBinaries[1] = palettesB;
@@ -43,11 +44,9 @@ static class CarFromBinaries
 	private static void parseBinarySettings(ubyte[] settings, Car car)
 	{
 		import std.bitmanip : read;
-		import std.stdio;
 		foreach (ref value; car.settings)
 		{
 			value = settings.read!float();
-			writeln(value);
 		}
 	}
 

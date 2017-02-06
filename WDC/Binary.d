@@ -193,6 +193,9 @@ public:
 		binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
 		binary[carAssets[carIndex].palette2..carAssets[carIndex].palette2End] = car.paletteBinaries[1];
 		binary[carAssets[carIndex].palette3..carAssets[carIndex].palette3End] = car.paletteBinaries[2];
+		// TODO, there are more settings than cars... so is this accurate for all the existing ones?
+		uint settingsPointer = carSettingsPointer + (carIndex * CAR_SETTINGS_SIZE);
+		binary[settingsPointer..settingsPointer + CAR_SETTINGS_SIZE] = car.settingsBinary;
 		updateBinaryCarAssets();
 		updateChecksum();
 		std.file.write("injectedRome", binary);
