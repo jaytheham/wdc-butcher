@@ -37,7 +37,7 @@ class Car : Drawable
 
 		ubyte[] modelsBinary;
 		ubyte[] modelsZlib;
-		ubyte[] settingsBinary;
+		ubyte[0xa0] settingsBinary;
 		ubyte[] texturesBinary;
 		ubyte[] texturesZlib;
 		ubyte[][3] paletteBinaries;

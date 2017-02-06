@@ -276,7 +276,6 @@ static class CarFromObj
 		input.close();
 		parseSettings(sourcePath ~ "carSettings.txt", car);
 		car.generateBinaries();
-		writeln(car.settings[0]);
 		return car;
 	}
 
