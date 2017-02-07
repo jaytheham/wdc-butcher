@@ -247,7 +247,6 @@ static class CarFromObj
 		snapLoDsToNearest(car, lodVertices, lodNormals);
 		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
-		//TODO check all this hardcoded shit is accurate
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[0];
 		car.modelToTextureMap[30] = car.textures.length - 1;
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_1.png")[0];

@@ -880,12 +880,14 @@ private:
 
 	void updateBinaryCarAssets()
 	{
+		int assetLocation;
 		foreach (index, asset; carAssets)
 		{
-			binary[carAssetsPointer + (index * 0x80) + 0x14..carAssetsPointer + (index * 0x80) + 0x18] = nativeToBigEndian(asset.modelZlib);
-			binary[carAssetsPointer + (index * 0x80) + 0x18..carAssetsPointer + (index * 0x80) + 0x1C] = nativeToBigEndian(asset.modelZlibEnd);
-			binary[carAssetsPointer + (index * 0x80) + 0x1C..carAssetsPointer + (index * 0x80) + 0x20] = nativeToBigEndian(asset.textureZlib);
-			binary[carAssetsPointer + (index * 0x80) + 0x20..carAssetsPointer + (index * 0x80) + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
+			assetLocation = carAssetsPointer + (index * 0x80);
+			binary[assetLocation + 0x14..assetLocation + 0x18] = nativeToBigEndian(asset.modelZlib);
+			binary[assetLocation + 0x18..assetLocation + 0x1C] = nativeToBigEndian(asset.modelZlibEnd);
+			binary[assetLocation + 0x1C..assetLocation + 0x20] = nativeToBigEndian(asset.textureZlib);
+			binary[assetLocation + 0x20..assetLocation + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
 		}
 	}
 
