@@ -1,25 +1,21 @@
 module wdc.carFromObj;
 
 import wdc.car, wdc.png, wdc.tools,
-	
 	   gfm.math,
-
-	   std.algorithm, std.stdio, std.string, std.conv, std.math : round;
+	   std.algorithm, std.stdio, std.string, std.conv;
+import std.math : round;
 import std.file : exists;
 
 static class CarFromObj
 {
 	public static Car convert(string objFilePath)
 	{
-		int model = 0xFFFF, modelSection,
+		int model = int.max, modelSection,
 		    totalVertexCount = 0, sectionVertexCount = 0,
 		    totalNormalCount = 0, sectionNormalCount = 0,
 		    totalUvCount = 0;
-		string line;
 		string[][] faces;
-		string[] lineParts, materialPaths;
 		vec2b[] sectionUvs;
-
 		enum FIRST_LOD_INDEX = 26;
 		vec3s[][3] lodVertices;
 		vec3b[][3] lodNormals;
@@ -88,6 +84,10 @@ static class CarFromObj
 			}
 		}
 
+		int folderEndIndex = max(lastIndexOf(objFilePath, '/'), lastIndexOf(objFilePath, '\\'));
+		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
+		string line;
+		string[] lineParts, materialPaths;
 		while((line = input.readln()) !is null)
 		{
 			line = chomp(line);
@@ -104,9 +104,9 @@ static class CarFromObj
 					// new section
 					model = parse!int(lineParts[0]);
 					modelSection = parse!int(lineParts[1]);
-					while (car.models[model].modelSections.length <= modelSection)
+					if (car.models[model].modelSections.length <= modelSection)
 					{
-						car.models[model].modelSections ~= Car.ModelSection();
+						car.models[model].modelSections.length = modelSection + 1;
 					}
 					totalVertexCount += sectionVertexCount;
 					totalNormalCount += sectionNormalCount;
@@ -128,7 +128,7 @@ static class CarFromObj
 						                            parse!float(lineParts[2]));
 					}
 					totalVertexCount += 4;
-					model = 0xFFFF;
+					model = int.max;
 				}
 				else if (indexOf(lineParts[0], Car.OBJ_LIGHT_ID) == 0)
 				{
@@ -142,7 +142,11 @@ static class CarFromObj
 						                            parse!float(lineParts[2]));
 					}
 					totalVertexCount += 4;
-					model = 0xFFFF;
+					model = int.max;
+				}
+				else
+				{
+					writefln("WARNING: Object %s is not a recognized car part", line);
 				}
 			}
 			else if (line.startsWith("v "))
@@ -191,8 +195,7 @@ static class CarFromObj
 				}
 				else
 				{
-					int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
-					string materialLibraryPath = objFilePath[0..folderEndIndex + 1] ~ lineParts[1];
+					string materialLibraryPath = sourcePath ~ lineParts[1];
 					materialPaths = texturePathsFromMtl(materialLibraryPath, objFilePath[0..folderEndIndex + 1]);
 				}
 				foreach (path; materialPaths)
@@ -241,12 +244,10 @@ static class CarFromObj
 		totalNormalCount += sectionNormalCount;
 		totalUvCount += sectionUvs.length;
 
-		updateLoDs(car, lodVertices, lodNormals);
+		snapLoDsToNearest(car, lodVertices, lodNormals);
 		shiftWheelTextureMapping(car.models[1].modelSections[0].polygons);
 		
 		//TODO check all this hardcoded shit is accurate
-		int folderEndIndex = lastIndexOf(objFilePath, '/') != -1 ? lastIndexOf(objFilePath, '/') : lastIndexOf(objFilePath, '\\');
-		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_0.png")[0];
 		car.modelToTextureMap[30] = car.textures.length - 1;
 		car.textures ~= Png.pngToWdcTexture(sourcePath ~ "set0_wheel_1.png")[0];
@@ -259,19 +260,23 @@ static class CarFromObj
 		car.paletteSets[1][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set1_wheel_0.png")[1];
 		car.paletteSets[2][Car.MODEL_TO_PALETTE[30]] = Png.pngToWdcTexture(sourcePath ~ "set2_wheel_0.png")[1];
 
-		string headlightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
-		car.paletteSets[0][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
-		headlightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
-		headlightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal05.png", car.modelToTextureMap[Car.PartNames.headlight_l]);
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+		int litHeadlightPalleteNum = Car.MODEL_TO_PALETTE[Car.PartNames.headlight_l] + 1;
+		int litHeadlightTextureNum = car.modelToTextureMap[Car.PartNames.headlight_l];
+		string headlightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal05.png", litHeadlightTextureNum);
+		car.paletteSets[0][litHeadlightPalleteNum] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+		headlightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal05.png", litHeadlightTextureNum);
+		car.paletteSets[1][litHeadlightPalleteNum] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
+		headlightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal05.png", litHeadlightTextureNum);
+		car.paletteSets[1][litHeadlightPalleteNum] = Png.pngToWdcTexture(headlightLitTexturePath)[1];
 
-		string taillightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
-		car.paletteSets[0][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
-		taillightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
-		car.paletteSets[1][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
-		taillightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal07.png", car.modelToTextureMap[Car.PartNames.taillight_l]);
-		car.paletteSets[2][Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
+		int litTaillightPalleteNum = Car.MODEL_TO_PALETTE[Car.PartNames.taillight_l] + 1;
+		int litTaillightTextureNum = car.modelToTextureMap[Car.PartNames.taillight_l];
+		string taillightLitTexturePath = sourcePath ~ format("set0_tex%.2d_pal07.png", litTaillightTextureNum);
+		car.paletteSets[0][litTaillightPalleteNum] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
+		taillightLitTexturePath = sourcePath ~ format("set1_tex%.2d_pal07.png", litTaillightTextureNum);
+		car.paletteSets[1][litTaillightPalleteNum] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
+		taillightLitTexturePath = sourcePath ~ format("set2_tex%.2d_pal07.png", litTaillightTextureNum);
+		car.paletteSets[2][litTaillightPalleteNum] = Png.pngToWdcTexture(taillightLitTexturePath)[1];
 		car.insertedPaletteIndices = [0,1,2,3,4,5,6,7];
 		input.close();
 		parseSettings(sourcePath ~ "carSettings.txt", car);
@@ -298,7 +303,7 @@ static class CarFromObj
 		return sectionNumber == 26 || sectionNumber == 27 || sectionNumber == 28;
 	}
 
-	private static void updateLoDs(ref Car car, ref vec3s[][3] lodVertices, ref vec3b[][3] lodNormals)
+	private static void snapLoDsToNearest(ref Car car, ref vec3s[][3] lodVertices, ref vec3b[][3] lodNormals)
 	{
 		enum FIRST_LOD_INDEX = 26;
 		float distanceBetween(vec3s a, vec3s b)
@@ -349,20 +354,20 @@ static class CarFromObj
 			}
 			return cast(ushort)closestIndex;
 		}
-		foreach (lod; 0..3)
+		foreach (lodNumber; 0..3)
 		{
-			foreach (ref polygon; car.models[0].modelSections[lod + FIRST_LOD_INDEX].polygons)
+			foreach (ref polygon; car.models[0].modelSections[lodNumber + FIRST_LOD_INDEX].polygons)
 			{
 				foreach (ref vertexIndex; polygon.vertexIndices)
 				{
 					if (vertexIndex != 0xFFFF)
 					{
-						vertexIndex = findNearestPoint(lodVertices[lod][vertexIndex]);
+						vertexIndex = findNearestPoint(lodVertices[lodNumber][vertexIndex]);
 					}
 				}
 				foreach (ref normalIndex; polygon.normalIndices)
 				{
-					normalIndex = findNearestNormal(lodNormals[lod][normalIndex]);
+					normalIndex = findNearestNormal(lodNormals[lodNumber][normalIndex]);
 				}
 			}
 		}

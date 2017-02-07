@@ -260,7 +260,7 @@ class Car : Drawable
 			modelsBinary ~= [0xFD, 0x10, 0, 0];
 			modelsBinary ~= nativeToBigEndian(texelsPointer);
 			modelsBinary ~= [0xE6, 0, 0, 0, 0, 0, 0, 0];
-			if (texture.length == (80 * 38) / 2)
+			if (texture.length == TEXTURE_SIZE_BYTES)
 			{
 				modelsBinary ~= [0xF3,0,0,0, 7, 0x2F, 0x70, 0];
 			}
@@ -272,9 +272,9 @@ class Car : Drawable
 			modelsBinary ~= [0xDF,0,0,0, 0,0,0,0];
 			texelsPointer += texture.length;
 			ubyte[] rowSwappedTexture = texture.dup;
-			if (rowSwappedTexture.length == (40 * 38))
+			if (rowSwappedTexture.length == TEXTURE_SIZE_BYTES)
 			{
-				wordSwapOddRows(rowSwappedTexture, 40, 38);
+				wordSwapOddRows(rowSwappedTexture, TEXTURE_WIDTH_BYTES, TEXTURE_HEIGHT_BYTES);
 			}
 			texturesBinary ~= rowSwappedTexture;
 		}
@@ -293,7 +293,7 @@ class Car : Drawable
 
 		// Moving wheel textures:
 		uint descriptorPointer;
-		foreach (i, texture; textures[$-4..$])
+		foreach (i, texture; textures[$ - 4..$])
 		{
 			descriptorPointer = modelsBinary.length;
 			modelsBinary ~= modelsBinary[textureDescriptorPointers[(textures.length - 4) + i]
@@ -301,11 +301,11 @@ class Car : Drawable
 			                             textureDescriptorPointers[(textures.length - 4) + i] + 0x20];
 			textureDescriptorPointers[(textures.length - 4) + i] = descriptorPointer;
 		}
-		foreach (texturePointer; textureDescriptorPointers[$-4..$])
+		foreach (texturePointer; textureDescriptorPointers[$ - 4..$])
 		{
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
-		foreach (texturePointer; textureDescriptorPointers[$-4..$])
+		foreach (texturePointer; textureDescriptorPointers[$ - 4..$])
 		{
 			modelsBinary ~= nativeToBigEndian(texturePointer);
 		}
@@ -315,7 +315,7 @@ class Car : Drawable
 
 		foreach (ref model; models[2..$])
 		{
-			model.modelSections.length = 1;// Even though they're almost certainly empty!
+			model.modelSections.length = 1;// Even though they're almost certainly empty they must exist
 		}
 
 		foreach (modelIndex, model; models)
