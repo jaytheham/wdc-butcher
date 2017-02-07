@@ -313,7 +313,7 @@ class Car : Drawable
 		uint sectionIndex = 0;
 		uint verticesPointer, normalsPointer, polygonsPointer, unkPointer;
 
-		foreach (model; models[2..$])
+		foreach (ref model; models[2..$])
 		{
 			model.modelSections.length = 1;// Even though they're almost certainly empty!
 		}
