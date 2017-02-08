@@ -161,6 +161,10 @@ public:
 				if (asset.modelZlib >= MY_INSERT_ZONE)
 				{
 					ubyte[] temp = binary[asset.modelZlib..asset.textureZlibEnd].dup;
+					if (binary.length < asset.textureZlibEnd + move)
+					{
+						binary ~= new ubyte[asset.textureZlibEnd + move - binary.length];
+					}
 					binary[asset.modelZlib + move..asset.textureZlibEnd + move] = temp;
 					asset.modelZlib += move;
 					asset.modelZlibEnd += move;
@@ -187,7 +191,6 @@ public:
 		{
 			binary ~= new ubyte[carAssets[carIndex].textureZlibEnd - binary.length];
 		}
-		// TODO, what if the highest model is not the current one, and it has been moved up? outside binary length
 		binary[carAssets[carIndex].modelZlib..carAssets[carIndex].modelZlibEnd] = car.modelsZlib;
 		binary[carAssets[carIndex].textureZlib..carAssets[carIndex].textureZlibEnd] = car.texturesZlib;
 		binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
