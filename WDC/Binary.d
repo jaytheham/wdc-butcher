@@ -52,8 +52,16 @@ private:
 		uint palette2End;
 		uint palette3;
 		uint palette3End;
-		ubyte[68] notdone;
+		uint carClass;
+		uint rank;
+		uint topSpeedRating;
+		uint accelerationRating;
+		uint handlingRating;
+		uint weightRating;
+		ubyte[44] notdone;
 	}
+	enum CAR_ASSET_MINIMUM_WEIGHT = 600;
+	enum CAR_ASSET_MINIMUM_ACCELERATION = 246775;
 
 public:
 
@@ -196,6 +204,10 @@ public:
 		binary[carAssets[carIndex].palette1..carAssets[carIndex].palette1End] = car.paletteBinaries[0];
 		binary[carAssets[carIndex].palette2..carAssets[carIndex].palette2End] = car.paletteBinaries[1];
 		binary[carAssets[carIndex].palette3..carAssets[carIndex].palette3End] = car.paletteBinaries[2];
+
+		carAssets[carIndex].accelerationRating = (cast(int)car.settings[Car.Settings.acceleration] - CAR_ASSET_MINIMUM_ACCELERATION) / 23747;
+		carAssets[carIndex].weightRating = (cast(int)car.settings[Car.Settings.kilograms] - CAR_ASSET_MINIMUM_WEIGHT) / 60;
+
 		// TODO, there are more settings than cars... so is this accurate for all the existing ones?
 		uint settingsPointer = carSettingsPointer + (carIndex * CAR_SETTINGS_SIZE);
 		binary[settingsPointer..settingsPointer + CAR_SETTINGS_SIZE] = car.settingsBinary;
@@ -878,6 +890,12 @@ private:
 			carAsset.palette2End = swapEndian(carAsset.palette2End);
 			carAsset.palette3 = swapEndian(carAsset.palette3);
 			carAsset.palette3End = swapEndian(carAsset.palette3End);
+			carAsset.carClass = swapEndian(carAsset.carClass);
+			carAsset.rank = swapEndian(carAsset.rank);
+			carAsset.topSpeedRating = swapEndian(carAsset.topSpeedRating);
+			carAsset.accelerationRating = swapEndian(carAsset.accelerationRating);
+			carAsset.handlingRating = swapEndian(carAsset.handlingRating);
+			carAsset.weightRating = swapEndian(carAsset.weightRating);
 		}
 	}
 
@@ -891,6 +909,9 @@ private:
 			binary[assetLocation + 0x18..assetLocation + 0x1C] = nativeToBigEndian(asset.modelZlibEnd);
 			binary[assetLocation + 0x1C..assetLocation + 0x20] = nativeToBigEndian(asset.textureZlib);
 			binary[assetLocation + 0x20..assetLocation + 0x24] = nativeToBigEndian(asset.textureZlibEnd);
+
+			binary[assetLocation + 0x48..assetLocation + 0x4C] = nativeToBigEndian(asset.accelerationRating);
+			binary[assetLocation + 0x50..assetLocation + 0x54] = nativeToBigEndian(asset.weightRating);
 		}
 	}
 
