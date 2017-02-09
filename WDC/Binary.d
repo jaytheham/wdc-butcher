@@ -38,6 +38,14 @@ private:
 
 	CarAsset[35] carAssets;
 
+	Region region;
+
+	enum Region
+	{
+		NTSC,
+		PAL
+	}
+
 	struct CarAsset
 	{
 		uint nameRamPointer;
@@ -74,13 +82,15 @@ public:
 
 		enforceBigEndian();
 
-		carAssetsPointer = binary[0x3e] == 'E' ? 0x81c30 : 0x83620;
-		carSettingsPointer = binary[0x3e] == 'E' ? 0x918d0 : 0x0; // TODO Euro
+		region = binary[0x3e] == 'E' ? Region.NTSC : Region.PAL;
+
+		carAssetsPointer = region == Region.NTSC ? 0x81c30 : 0x83620;
 		loadCarAssets();
-		trackAssetsPointer = binary[0x3e] == 'E' ? 0x91550 : 0x92f40;
+		carSettingsPointer = region == Region.NTSC ? 0x918d0 : 0x932c0;
+		trackAssetsPointer = region == Region.NTSC ? 0x91550 : 0x92f40;
 
 		writefln("Loaded ROM: %s", cast(char[])binary[0x20..0x34]);
-		writefln("Version detected as %s", (binary[0x3e] == 'E' ? "NTSC" : "PAL"));
+		writefln("Version detected as %s", cast(Region)region);
 	}
 
 	char[][] getCarList()
