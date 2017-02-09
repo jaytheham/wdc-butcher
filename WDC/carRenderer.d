@@ -19,7 +19,7 @@ class CarRenderer : Renderer
 		{
 			vec3i position;
 			vec2f vertexUV;
-			vec3i inNormal;
+			//vec3i inNormal;
 		}
 		Vertex[] partVertices;
 		mat4f model;
@@ -308,10 +308,10 @@ class CarRenderer : Renderer
 			                    data.readShort(vertexOffset + 4),
 			                    data.readShort(vertexOffset)),
 			              vec2f(cast(byte)data[polygonOffset + 0x10 + vertNum * 2] / cast(float)textureWidth,
-			                    cast(byte)data[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight),
-			              vec3i(cast(int)cast(byte)data[normalOffset + 1],
-			                    cast(int)cast(byte)data[normalOffset + 2],
-			                    cast(int)cast(byte)data[normalOffset]));
+			                    cast(byte)data[polygonOffset + 0x11 + vertNum * 2] / cast(float)textureHeight));//,
+			              //vec3i(cast(int)cast(byte)data[normalOffset + 1],
+			              //      cast(int)cast(byte)data[normalOffset + 2],
+			              //      cast(int)cast(byte)data[normalOffset]));
 		}
 		
 		int pointerOffset = modelBlockPointerOffset + modelIndex * 0x10;
