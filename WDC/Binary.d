@@ -223,7 +223,7 @@ public:
 		binary[settingsPointer..settingsPointer + CAR_SETTINGS_SIZE] = car.settingsBinary;
 		updateBinaryCarAssets();
 		updateChecksum();
-		std.file.write("injectedRome", binary);
+		std.file.write(format("World Driver Championship (%s) [Butchered].z64", region == Region.NTSC ? "U" : "E"), binary);
 	}
 
 	char[][] getTrackList()

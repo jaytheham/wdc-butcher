@@ -5,13 +5,13 @@ import std.math,	std.conv,	std.stdio,	std.file,
 	gfm.logger,		gfm.sdl2,	gfm.math,	gfm.opengl,
 	wdc.car,		wdc.carFromObj,			wdc.carToObj,
 	wdc.track,		wdc.drawable,			wdc.binary,
-	camera,	timekeeper,	test.drawer;
+	camera,	timekeeper;
 
 private
 {
 	enum int WINDOW_WIDTH = 1280;
 	enum int WINDOW_HEIGHT = 720;
-	enum string RELEASE_VERSION = "0.0.0 Feb 16 2016";
+	enum string RELEASE_VERSION = "1.0.0 Feb 9 2017";
 
 	Binary binaryFile;
 	SDL2Window window;
@@ -127,8 +127,12 @@ private Binary getWDCBinary(string[] args)
 	if (args.length == 1)
 	{
 		writeln("Drag and drop a World Driver Championship ROM on the exe to load it.");
-		writeln("Otherwise you can enter the unquoted path to a ROM and press Enter now:");
+		writeln("Otherwise you can enter the path to a ROM and press Enter now:");
 		binaryPath = chomp(readln());
+		if (binaryPath[0] == '"' || binaryPath[0] == '\'')
+		{
+			binaryPath = binaryPath[1..$ - 1];
+		}
 	}
 	else
 	{
