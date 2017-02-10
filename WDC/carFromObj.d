@@ -2,7 +2,7 @@ module wdc.carFromObj;
 
 import wdc.car, wdc.png, wdc.tools,
 	   gfm.math,
-	   std.algorithm, std.stdio, std.string, std.conv;
+	   std.algorithm, std.stdio, std.string, std.conv, std.path;
 import std.math : round;
 import std.file : exists;
 
@@ -84,8 +84,7 @@ static class CarFromObj
 			}
 		}
 
-		int folderEndIndex = max(lastIndexOf(objFilePath, '/'), lastIndexOf(objFilePath, '\\'));
-		string sourcePath = folderEndIndex == -1 ? "" : objFilePath[0..folderEndIndex + 1];
+		string sourcePath = dirName(objFilePath) ~ dirSeparator;
 		string line;
 		string[] lineParts, materialPaths;
 		while((line = input.readln()) !is null)
@@ -189,14 +188,14 @@ static class CarFromObj
 			else if (line.startsWith("mtllib "))
 			{
 				lineParts = split(line, " ");
-				if (canFind(lineParts[1], '\\') || canFind(lineParts[1], '/')) // Absolute path, hopefully
+				if (isAbsolute(lineParts[1]))
 				{
 					materialPaths = texturePathsFromMtl(lineParts[1], "");
 				}
 				else
 				{
 					string materialLibraryPath = sourcePath ~ lineParts[1];
-					materialPaths = texturePathsFromMtl(materialLibraryPath, objFilePath[0..folderEndIndex + 1]);
+					materialPaths = texturePathsFromMtl(materialLibraryPath, sourcePath);
 				}
 				foreach (path; materialPaths)
 				{

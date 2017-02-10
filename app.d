@@ -23,6 +23,8 @@ private
 
 	Drawable selectedObject;
 
+	string outputDir;
+
 	struct UserCommand
 	{
 		string shortCommand;
@@ -89,10 +91,10 @@ void main(string[] args)
 
 private void setupPathAndFolder()
 {
-	string exePath = thisExePath();
-	string exeFolder = exePath[0..(lastIndexOfAny(exePath, "\\/"))];
+	import std.path;
+	string exeFolder = dirName(thisExePath());
 	chdir(exeFolder);
-	string outputDir = exeFolder ~ "\\output";
+	outputDir = exeFolder ~ dirSeparator ~ "output" ~ dirSeparator;
 	if (!exists(outputDir))
 	{
 		mkdir(outputDir);
@@ -310,7 +312,7 @@ private void extractCarObj(string[] args)
 private void extractCarBinary(string[] args)
 {
 	int carIndex = parse!int(args[1]);
-	binaryFile.dumpCarData(carIndex);
+	binaryFile.dumpCarData(carIndex, outputDir);
 }
 
 private void importCarObj(string[] args)
@@ -345,7 +347,7 @@ private void displayTrack(int index, int variation)
 private void extractTrackBinary(string[] args)
 {
 	int trackIndex = parse!int(args[1]);
-	binaryFile.dumpTrackData(trackIndex);
+	binaryFile.dumpTrackData(trackIndex, outputDir);
 }
 
 private void extractZlibBlock(string[] args)
@@ -355,7 +357,6 @@ private void extractZlibBlock(string[] args)
 	int dataOffset = hexPrefix ? parse!int(offset, 16) : parse!int(offset);
 
 	string workingDir = getcwd();
-	string outputDir = workingDir ~ "\\output";
 	chdir(outputDir);
 	ubyte[] output = binaryFile.decompressZlibBlock(dataOffset);
 	std.file.write(format("Data_%.8x", dataOffset), output);

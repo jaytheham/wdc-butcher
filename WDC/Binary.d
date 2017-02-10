@@ -806,12 +806,8 @@ public:
 		} while (spa8 != spb0);
 	}
 
-	void dumpCarData(int carIndex)
+	void dumpCarData(int carIndex, string destination)
 	{
-		string workingDir = getcwd();
-		string outputDir = workingDir ~ "\\output";
-		chdir(outputDir);
-
 		int carAssetOffset = carAssetsPointer + CAR_ASSETS_SIZE * carIndex;
 		int offset, endOffset;
 		int wordNum = 5;
@@ -825,7 +821,7 @@ public:
 				if (binary[offset + 0xc] == 0x78)
 				{
 					auto output = decompressZlibBlock(offset);
-					write(format("Car_%.2d_%.8x", carIndex, offset), output);
+					write(format("%sCar_%.2d_%.8x", destination, carIndex, offset), output);
 					offset += output.length;
 				}
 				else
@@ -833,26 +829,19 @@ public:
 					writefln("%x not zlib", offset);
 				}
 		}
-		writefln("Car %d data extracted to %s", carIndex, outputDir);
-		chdir(workingDir);
+		writefln("Car %d data extracted to %s", carIndex, destination);
 	}
 
-	void dumpTrackData(int trackIndex)
+	void dumpTrackData(int trackIndex, string destination)
 	{
-		string workingDir = getcwd();
-		string outputDir = workingDir ~ "\\output";
-		chdir(outputDir);
-
 		int trackAssetOffset = trackAssetsPointer + TRACK_ASSETS_SIZE * trackIndex;
 		int offset;
 
 		offset = peek!int(binary[trackAssetOffset + 0x14..trackAssetOffset + 0x14 + 4]);
 
 		auto output = decompressZlibBlock(offset);
-		write(format("Track_%.2d_%.8x", trackIndex, offset), output);
-		writefln("Track %d data extracted to %s", trackIndex, outputDir);
-
-		chdir(workingDir);
+		write(format("%sTrack_%.2d_%.8x", destination, trackIndex, offset), output);
+		writefln("Track %d data extracted to %s", trackIndex, destination);
 	}
 
 	ubyte[] decompressZlibBlock(int offset)
