@@ -220,6 +220,7 @@ static class CarFromObj
 					car.modelToTextureMap[modelSection] = materialIndex;
 					if (materialPaths[materialIndex] != "")
 					{
+						writefln("Palette %d from texture: %s",Car.MODEL_TO_PALETTE[modelSection] , materialPaths[materialIndex]);
 						car.paletteSets[0][Car.MODEL_TO_PALETTE[modelSection]] = Png.pngToWdcTexture(materialPaths[materialIndex])[1];
 
 						string altPaletteTexturePath = materialPaths[materialIndex][0..$-20] ~ "set1" ~ materialPaths[materialIndex][$-16..$];
