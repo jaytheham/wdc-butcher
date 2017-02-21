@@ -38,7 +38,7 @@ private
 
 void main(string[] args)
 {
-	writeln("World Driver Championship for N64 Butcher");
+	writeln("World Driver Championship Butcher for N64");
 	writeln("Created by jaytheham@gmail.com");
 	writeln("--------------------------------\n");
 
