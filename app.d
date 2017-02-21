@@ -11,7 +11,7 @@ private
 {
 	enum int WINDOW_WIDTH = 1280;
 	enum int WINDOW_HEIGHT = 720;
-	enum string RELEASE_VERSION = "1.0.0 Feb 9 2017";
+	enum string RELEASE_VERSION = "1.0.0 Feb 21 2017";
 
 	Binary binaryFile;
 	SDL2Window window;
@@ -304,7 +304,7 @@ private void displayCar(int index)
 private void extractCarObj(string[] args)
 {
 	int carIndex = parse!int(args[1]);
-	string destinationFolder = format("output/car%.2d/", carIndex);
+	string destinationFolder = outputDir ~ format("car%.2d/", carIndex);
 	CarToObj.convert(binaryFile.getCar(carIndex), destinationFolder);
 	writefln("Car %d extracted to .obj file in %s", carIndex, destinationFolder);
 }
